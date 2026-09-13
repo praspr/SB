@@ -1,0 +1,51 @@
+# ─── Python ─────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+env/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+
+# ─── Node / Web ─────────────────────────────────────────────────────
+node_modules/
+dist/
+.vite/
+*.log
+.parcel-cache/
+.next/
+
+# ─── SQLite (databases live outside the repo, but be safe) ──────────
+*.db
+*.db-shm
+*.db-wal
+
+# ─── Backups from `sb install` and hand edits ───────────────────────
+*.sb.bak.*
+*.bak
+
+# ─── macOS ──────────────────────────────────────────────────────────
+.DS_Store
+._*
+
+# ─── Editors ────────────────────────────────────────────────────────
+.idea/
+.vscode/settings.json
+.vscode/launch.json
+*.swp
+*~
+
+# ─── Secrets / env ──────────────────────────────────────────────────
+.env
+.env.*
+*.token
+*.key
+!config.example.*
+!*.example.env

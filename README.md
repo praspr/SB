@@ -1,0 +1,184 @@
+# sb — Second Brain
+
+A local personal-assistant system. Runs entirely on your Mac, integrates with
+your coding harnesses (Claude Code / OpenCode / Cursor / VS Code), and exposes
+its own dashboard in the browser.
+
+Everything is optional and modular — take what you want, ignore the rest.
+
+## What's in this repo
+
+```
+sb/
+├── web/                    React + TypeScript dashboard (Vite, port 5173)
+├── services/
+│   ├── todos/              sb-todos — MCP + REST service, SQLite-backed
+│   └── jira/               sb-jira  — read-only MCP + REST for JIRA
+├── docs/
+│   ├── status/             Phase 0/1 status snapshots (see docs/status/README.md)
+│   └── design/             UI design brief, tokens, components, HTML mockup
+├── README.md               ← this file
+└── PENDING.md              What's next / not built yet
+```
+
+## Live services
+
+| Service | Port | Transport | Storage | Auto-start |
+|---|---|---|---|---|
+| **sb-todos** | `127.0.0.1:58788` | MCP + REST | `~/.local/share/sb/todos.db` (SQLite) | launchd `com.praspr.sb-todos` |
+| **sb-jira** | `127.0.0.1:58789` | MCP + REST | markdown files at `ciq/docs/jira/tickets/` (read-only) | launchd `com.praspr.sb-jira` |
+| **sb-web** | `127.0.0.1:5173` | HTTP (dev) | mocks + proxied REST from the two services | `npm run dev` |
+
+Ports live in the IANA Dynamic/Private range (49152–65535) to avoid collisions
+with common dev services.
+
+## Architecture
+
+```
+┌─── Coding Harnesses (Cursor · OpenCode · Claude Code) ──────────┐
+│  Consume both MCP servers as tools                                │
+└─────────┬────────────────────────────────────┬───────────────────┘
+          │ MCP HTTP                            │ MCP HTTP
+          ▼                                     ▼
+┌─── sb-todos :58788 ──────────┐   ┌─── sb-jira :58789 (READ-ONLY) ──┐
+│  Python · FastMCP + FastAPI  │   │  Python · FastMCP + FastAPI      │
+│  SQLite at                    │   │  Reads ciq/docs/jira/tickets/    │
+│  ~/.local/share/sb/todos.db   │   │  Refresh pulls Atlassian → files │
+│                               │   │  Never writes to Atlassian       │
+└──────────▲────────────────────┘   └───────────▲──────────────────────┘
+           │ REST via /proxy/todos              │ REST via /proxy/jira
+           │                                    │
+┌──────────┴────────────────────────────────────┴─────────────────────┐
+│  sb-web :5173  (Vite + React + TypeScript + Tailwind)                │
+│    Landing · Todos · JIRAs · Meetings · Webex                        │
+│    Linear-dense UI · dark mode · ⌘K palette · ⌘N add-todo            │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+## How to run
+
+### Prerequisites
+- macOS
+- Python 3.13+ · [`uv`](https://docs.astral.sh/uv/) at `~/.local/bin/uv`
+- Node 20+ · npm
+
+### Web dashboard
+
+```bash
+cd sb/web
+npm install     # first time only
+npm run dev     # → http://localhost:5173
+```
+
+### Services (both auto-start on login via launchd)
+
+The services live at `~/Library/LaunchAgents/` and boot with `RunAtLoad=true`
+and `KeepAlive=true`, so they're up automatically after any reboot.
+
+To install / re-install from scratch:
+
+```bash
+# sb-todos
+cd sb/services/todos && uv sync --extra dev
+cp launchd/com.praspr.sb-todos.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.praspr.sb-todos.plist
+
+# sb-jira
+cd sb/services/jira && uv sync --extra dev
+cp launchd/com.praspr.sb-jira.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.praspr.sb-jira.plist
+```
+
+Health checks:
+
+```bash
+launchctl list | grep sb-
+curl http://127.0.0.1:58788/health   # sb-todos
+curl http://127.0.0.1:58789/health   # sb-jira
+tail -f /tmp/sb-todos.err.log        # or .out.log
+tail -f /tmp/sb-jira.stderr.log
+```
+
+## MCP tools
+
+Both servers are already wired into three harnesses:
+
+| Harness | Config file |
+|---|---|
+| Claude Code | `~/.claude.json` → `mcpServers.sb-todos` + `sb-jira` |
+| OpenCode | `~/.config/opencode/opencode.json` → `mcp.sb-todos` + `sb-jira` |
+| Cursor | `~/.cursor/mcp.json` → `mcpServers.sb-todos` + `sb-jira` |
+
+### sb-todos tools (write-capable)
+
+| Tool | What it does |
+|---|---|
+| `todo_list` | List todos, filter by status/priority/domain/tag |
+| `todo_get` | Get one todo by id |
+| `todo_add` | Create a new todo (idempotent on external_source+external_ref) |
+| `todo_complete` | Mark complete |
+| `todo_uncomplete` | Un-mark |
+| `todo_update` | Update any field |
+| `todo_delete` | Delete a todo |
+| `todo_search` | Substring search on title + description |
+
+### sb-jira tools (read-only)
+
+| Tool | What it does |
+|---|---|
+| `list_jira_tickets` | List tickets, filter by status/priority/project/q |
+| `get_jira_ticket` | Get one ticket by key, full detail with sections |
+| `sync_jira` | Pull from Atlassian → rewrite local markdown files (never writes up) |
+| `jira_status` | Atlassian reachability + ticket count |
+
+## The web app
+
+`sb/web` is a Vite/React/TypeScript app matching a Linear-dense design language
+(see `sb/docs/design/`).
+
+Five pages, five sidebar items:
+
+| Route | Data | Status |
+|---|---|---|
+| `/` — Landing | Usage tiles (Copilot + Cursor) · Today's todos · Today's meetings | tiles + todos live · meetings mock |
+| `/todos` | sb-todos SQLite (add + complete work end-to-end) | live |
+| `/jira` | sb-jira, 24 real tickets from `ciq/docs/jira/tickets/` | live |
+| `/meetings` | Mock data | placeholder |
+| `/webex` | Mock data | placeholder |
+
+Shortcuts: `⌘K` opens the command palette, `⌘N` jumps to `/todos` and focuses
+the quick-add input.
+
+## Config files
+
+| Purpose | Path |
+|---|---|
+| Todos SQLite | `~/.local/share/sb/todos.db` |
+| Todos launchd | `~/Library/LaunchAgents/com.praspr.sb-todos.plist` |
+| JIRA launchd | `~/Library/LaunchAgents/com.praspr.sb-jira.plist` |
+| Todos logs | `/tmp/sb-todos.{out,err}.log` |
+| JIRA logs | `/tmp/sb-jira.{stdout,stderr}.log` |
+| Atlassian token (optional, read-only) | macOS Keychain, service `sb`, key `jira.token` |
+
+## LLM access
+
+The web app's Copilot and Cursor usage tiles use existing local services:
+
+- **claudegate** at `http://localhost:9999` — GitHub Copilot proxy (Anthropic-compatible)
+- **Cursor** — the Vite dev proxy reads Cursor.app's own JWT from `state.vscdb`
+  and builds the `WorkosCursorSessionToken` cookie server-side. The browser
+  never sees the token. Zero config as long as you're signed in to Cursor.app.
+
+## Design language
+
+Dark-first Linear-inspired UI. Full token spec + component catalog at
+`sb/docs/design/`. There's a fully rendered HTML mockup at
+`sb/docs/design/mockups/today-view.html` if you want to see it before running
+the app.
+
+## Where to look next
+
+- `sb/PENDING.md` — what's not built yet, with recommended order
+- `sb/docs/status/` — historical Phase 0/1 snapshots and design decisions
+- `sb/docs/design/` — full design brief, component catalog, HTML mockup
+- Individual service READMEs at `sb/services/todos/README.md` and `sb/services/jira/README.md`

@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>sb — Today</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              sb: {
+                bg: '#0C111B',
+                panel: '#121826',
+                elevated: '#171F30',
+                border: '#253047',
+                borderStrong: '#33415C',
+                text: '#F5F7FB',
+                muted: '#A7B0C0',
+                faint: '#7C879A',
+                accent: '#5E6AD2',
+                accentSoft: '#2A326C',
+                success: '#3FB68B',
+                warn: '#D9A441'
+              },
+            },
+            boxShadow: {
+              overlay: '0 16px 40px rgba(0,0,0,0.24)',
+            },
+            fontFamily: {
+              sans: ['Inter Variable', 'Inter', 'SF Pro Display', 'SF Pro Text', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      body {
+        font-family: "Inter Variable", "Inter", "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, sans-serif;
+        font-variant-numeric: tabular-nums;
+        background:
+          radial-gradient(circle at top left, rgba(94, 106, 210, 0.14), transparent 28%),
+          radial-gradient(circle at 85% 10%, rgba(93, 168, 255, 0.08), transparent 20%),
+          linear-gradient(180deg, #0c111b 0%, #0a1018 100%);
+      }
+      .noise::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0.05;
+        background-image:
+          linear-gradient(rgba(255,255,255,0.12) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,0.12) 1px, transparent 1px);
+        background-size: 3px 3px, 3px 3px;
+        mask-image: radial-gradient(circle at center, black, transparent 80%);
+      }
+      .scrollbar-thin::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+      }
+      .scrollbar-thin::-webkit-scrollbar-thumb {
+        background: #253047;
+        border-radius: 999px;
+        border: 2px solid #121826;
+      }
+      .glass {
+        backdrop-filter: blur(12px);
+      }
+    </style>
+  </head>
+  <body class="min-h-screen bg-sb-bg text-sb-text">
+    <div class="noise relative min-h-screen overflow-hidden">
+      <div class="flex min-h-screen">
+        <aside class="glass hidden w-[252px] shrink-0 border-r border-sb-border bg-sb-panel/88 xl:flex xl:flex-col">
+          <div class="flex items-center gap-3 border-b border-sb-border px-5 py-5">
+            <div class="flex h-10 w-10 items-center justify-center rounded-2xl border border-sb-borderStrong bg-gradient-to-br from-sb-accent/30 to-sb-accentSoft text-sm font-semibold text-white shadow-overlay">sb</div>
+            <div>
+              <div class="text-[15px] font-semibold tracking-tight">Second Brain</div>
+              <div class="text-[12px] text-sb-faint">Chief of Staff shell</div>
+            </div>
+          </div>
+
+          <div class="px-3 py-4">
+            <div class="mb-2 px-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-sb-faint">Apps</div>
+            <nav class="space-y-1">
+              <a class="flex items-center gap-3 rounded-xl border border-sb-borderStrong bg-sb-accent/12 px-3 py-2.5 text-[13px] text-sb-text" href="#">
+                <span class="h-2 w-2 rounded-full bg-sb-accent"></span>
+                <span class="font-medium">Chief of Staff</span>
+              </a>
+              <a class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] text-sb-muted transition hover:bg-sb-elevated" href="#">Finance <span class="ml-auto rounded-full border border-sb-border px-2 py-0.5 text-[11px] text-sb-faint">Later</span></a>
+              <a class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] text-sb-muted transition hover:bg-sb-elevated" href="#">Health <span class="ml-auto rounded-full border border-sb-border px-2 py-0.5 text-[11px] text-sb-faint">Later</span></a>
+              <a class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] text-sb-muted transition hover:bg-sb-elevated" href="#">Reading <span class="ml-auto rounded-full border border-sb-border px-2 py-0.5 text-[11px] text-sb-faint">Later</span></a>
+              <a class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] text-sb-muted transition hover:bg-sb-elevated" href="#">Home <span class="ml-auto rounded-full border border-sb-border px-2 py-0.5 text-[11px] text-sb-faint">Later</span></a>
+            </nav>
+          </div>
+
+          <div class="px-3 py-2">
+            <div class="mb-2 px-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-sb-faint">Chief of Staff</div>
+            <nav class="space-y-1 text-[13px]">
+              <a class="flex items-center rounded-xl bg-sb-elevated px-3 py-2.5 font-medium text-white" href="#">Today</a>
+              <a class="flex items-center rounded-xl px-3 py-2.5 text-sb-muted transition hover:bg-sb-elevated hover:text-sb-text" href="#">Tasks</a>
+              <a class="flex items-center rounded-xl px-3 py-2.5 text-sb-muted transition hover:bg-sb-elevated hover:text-sb-text" href="#">Signals</a>
+              <a class="flex items-center rounded-xl px-3 py-2.5 text-sb-muted transition hover:bg-sb-elevated hover:text-sb-text" href="#">Proposals <span class="ml-auto rounded-full bg-sb-accent/15 px-2 py-0.5 text-[11px] text-sb-text">4</span></a>
+              <a class="flex items-center rounded-xl px-3 py-2.5 text-sb-muted transition hover:bg-sb-elevated hover:text-sb-text" href="#">Goals</a>
+              <a class="flex items-center rounded-xl px-3 py-2.5 text-sb-muted transition hover:bg-sb-elevated hover:text-sb-text" href="#">Adapters</a>
+              <a class="flex items-center rounded-xl px-3 py-2.5 text-sb-muted transition hover:bg-sb-elevated hover:text-sb-text" href="#">Settings</a>
+            </nav>
+          </div>
+
+          <div class="mt-auto border-t border-sb-border px-4 py-4">
+            <div class="rounded-2xl border border-sb-border bg-black/20 p-3">
+              <div class="flex items-center justify-between text-[12px]">
+                <span class="text-sb-muted">Adapter health</span>
+                <span class="flex items-center gap-2 text-sb-text"><span class="h-2 w-2 rounded-full bg-sb-success"></span>3/4 healthy</span>
+              </div>
+              <p class="mt-2 text-[12px] leading-5 text-sb-faint">JIRA is blocked by a missing Keychain token. Everything else is current.</p>
+            </div>
+          </div>
+        </aside>
+
+        <main class="flex min-w-0 flex-1 flex-col">
+          <header class="glass sticky top-0 z-20 border-b border-sb-border bg-sb-bg/82">
+            <div class="flex items-center gap-4 px-6 py-4 lg:px-8">
+              <div>
+                <div class="text-[12px] uppercase tracking-[0.16em] text-sb-faint">sb dashboard</div>
+                <div class="mt-1 text-[22px] font-semibold tracking-tight">Today</div>
+              </div>
+              <div class="ml-auto flex items-center gap-3">
+                <button class="hidden rounded-xl border border-sb-border bg-sb-panel px-3 py-2 text-[13px] text-sb-muted transition hover:border-sb-borderStrong hover:text-sb-text md:flex md:items-center md:gap-2">
+                  <span class="text-sb-faint">⌘K</span>
+                  <span>Command palette</span>
+                </button>
+                <button class="rounded-xl border border-sb-border bg-sb-panel px-3 py-2 text-[13px] text-sb-muted transition hover:border-sb-borderStrong hover:text-sb-text">Sync all</button>
+                <div class="flex items-center gap-2 rounded-xl border border-sb-border bg-sb-panel px-3 py-2 text-[13px]">
+                  <span class="h-2 w-2 rounded-full bg-sb-success"></span>
+                  <span class="text-sb-muted">MCP live</span>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          <div class="flex-1 overflow-y-auto scrollbar-thin px-6 py-6 lg:px-8">
+            <section class="grid gap-4 xl:grid-cols-[1.45fr_0.95fr]">
+              <div class="rounded-[18px] border border-sb-border bg-sb-panel/88 p-5">
+                <div class="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <div class="text-[12px] uppercase tracking-[0.18em] text-sb-faint">Tuesday</div>
+                    <div class="mt-1 text-[30px] font-semibold tracking-[-0.03em]">September 13</div>
+                    <p class="mt-2 max-w-2xl text-[13px] leading-6 text-sb-muted">Morning brief and evening wrap are shown side by side because <span class="text-sb-text">`sb` stores both in the same daily entry</span>. Evidence stays clickable throughout.</p>
+                  </div>
+                  <div class="flex flex-wrap gap-2">
+                    <button class="rounded-xl border border-sb-borderStrong bg-sb-accent px-3.5 py-2 text-[13px] font-medium text-white shadow-[0_0_0_1px_rgba(255,255,255,0.06)] transition hover:brightness-110">Regenerate plan</button>
+                    <button class="rounded-xl border border-sb-border bg-sb-panel px-3.5 py-2 text-[13px] text-sb-muted transition hover:border-sb-borderStrong hover:text-sb-text">Standup</button>
+                    <button class="rounded-xl border border-sb-border bg-sb-panel px-3.5 py-2 text-[13px] text-sb-muted transition hover:border-sb-borderStrong hover:text-sb-text">Wrap today</button>
+                  </div>
+                </div>
+
+                <div class="mt-5 grid gap-3 md:grid-cols-4">
+                  <div class="rounded-2xl border border-sb-border bg-black/16 p-3.5">
+                    <div class="text-[12px] text-sb-faint">Top score</div>
+                    <div class="mt-2 text-[24px] font-semibold">91</div>
+                    <div class="mt-1 text-[12px] text-sb-muted">CXP-45827</div>
+                  </div>
+                  <div class="rounded-2xl border border-sb-border bg-black/16 p-3.5">
+                    <div class="text-[12px] text-sb-faint">Pending proposals</div>
+                    <div class="mt-2 text-[24px] font-semibold">4</div>
+                    <div class="mt-1 text-[12px] text-sb-muted">all CHANGELOG drafts</div>
+                  </div>
+                  <div class="rounded-2xl border border-sb-border bg-black/16 p-3.5">
+                    <div class="text-[12px] text-sb-faint">Signals today</div>
+                    <div class="mt-2 text-[24px] font-semibold">18</div>
+                    <div class="mt-1 text-[12px] text-sb-muted">git, changelog, jira, tasks</div>
+                  </div>
+                  <div class="rounded-2xl border border-sb-border bg-black/16 p-3.5">
+                    <div class="text-[12px] text-sb-faint">Last sync</div>
+                    <div class="mt-2 text-[24px] font-semibold">12s</div>
+                    <div class="mt-1 text-[12px] text-sb-muted">changelog · git · tasks ok</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="rounded-[18px] border border-sb-border bg-sb-panel/88 p-5">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <div class="text-[12px] uppercase tracking-[0.18em] text-sb-faint">Quick status</div>
+                    <div class="mt-1 text-[16px] font-semibold">What needs attention</div>
+                  </div>
+                  <span class="rounded-full border border-sb-border bg-sb-accent/10 px-2.5 py-1 text-[11px] font-medium text-sb-text">Live via 127.0.0.1:8787/sse</span>
+                </div>
+                <div class="mt-4 space-y-3">
+                  <div class="rounded-2xl border border-sb-border bg-black/16 p-3.5">
+                    <div class="flex items-center justify-between">
+                      <span class="text-[13px] font-medium">JIRA sync blocked</span>
+                      <span class="rounded-full border border-sb-border px-2 py-0.5 text-[11px] text-[#F4D27A]">warn</span>
+                    </div>
+                    <p class="mt-2 text-[12px] leading-5 text-sb-muted">`jira.token` is missing from Keychain, so assigned tickets are not in today's ranking.</p>
+                  </div>
+                  <div class="rounded-2xl border border-sb-border bg-black/16 p-3.5">
+                    <div class="flex items-center justify-between">
+                      <span class="text-[13px] font-medium">Wrap queue ready</span>
+                      <span class="rounded-full border border-sb-border px-2 py-0.5 text-[11px] text-sb-text">4 pending</span>
+                    </div>
+                    <p class="mt-2 text-[12px] leading-5 text-sb-muted">Approvals are required before any proposed CHANGELOG text leaves the local queue.</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="mt-6 grid gap-6 xl:grid-cols-[1.18fr_0.82fr]">
+              <div class="space-y-6">
+                <div class="rounded-[18px] border border-sb-border bg-sb-panel/92 p-5">
+                  <div class="flex items-center justify-between gap-4">
+                    <div>
+                      <div class="text-[12px] uppercase tracking-[0.18em] text-sb-faint">Morning plan</div>
+                      <h2 class="mt-1 text-[18px] font-semibold tracking-tight">Ranked must-dos with rationale</h2>
+                    </div>
+                    <div class="rounded-full border border-sb-border bg-black/20 px-3 py-1.5 text-[12px] text-sb-muted">saved 08:31</div>
+                  </div>
+
+                  <div class="mt-5 space-y-3">
+                    <article class="rounded-2xl border border-sb-borderStrong bg-gradient-to-r from-sb-accent/12 to-sb-accentSoft/10 p-4">
+                      <div class="flex flex-wrap items-start gap-3">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-[15px] font-semibold">91</div>
+                        <div class="min-w-0 flex-1">
+                          <div class="flex flex-wrap items-center gap-2">
+                            <h3 class="text-[15px] font-semibold tracking-tight">CXP-45827 — Reduce backlog below target</h3>
+                            <span class="rounded-full border border-sb-border bg-black/20 px-2 py-0.5 text-[11px] text-sb-muted">jira</span>
+                            <span class="rounded-full border border-sb-border bg-black/20 px-2 py-0.5 text-[11px] text-sb-muted">work</span>
+                            <span class="rounded-full border border-sb-border bg-black/20 px-2 py-0.5 text-[11px] text-sb-muted">deep</span>
+                          </div>
+                          <p class="mt-2 text-[13px] leading-6 text-sb-muted">Highest rank because it directly matches the weekly goal to keep open assigned tickets under 10, is overdue, and carries the strongest work-domain weight.</p>
+                          <div class="mt-3 flex flex-wrap gap-2">
+                            <span class="rounded-full border border-sb-border bg-black/18 px-2.5 py-1 text-[12px] text-sb-text">goal: clear_jira_backlog</span>
+                            <span class="rounded-full border border-sb-border bg-black/18 px-2.5 py-1 text-[12px] text-sb-text">due today</span>
+                            <span class="rounded-full border border-sb-border bg-black/18 px-2.5 py-1 text-[12px] text-sb-text">source ref: CXP-45827</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="mt-4 grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
+                        <div>
+                          <div class="mb-2 flex items-center justify-between text-[11px] text-sb-faint">
+                            <span>score composition</span>
+                            <span>RICE + Eisenhower + goal alignment</span>
+                          </div>
+                          <div class="h-2 rounded-full bg-black/25">
+                            <div class="flex h-2 overflow-hidden rounded-full">
+                              <span class="h-full w-[36%] bg-sb-accent"></span>
+                              <span class="h-full w-[28%] bg-[#7F8BFF]"></span>
+                              <span class="h-full w-[19%] bg-[#4C8BFF]"></span>
+                              <span class="h-full w-[17%] bg-[#6CBFA3]"></span>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                          <button class="rounded-lg border border-sb-border bg-black/20 px-2.5 py-1 text-[12px] text-sb-text">[signal:244]</button>
+                          <button class="rounded-lg border border-sb-border bg-black/20 px-2.5 py-1 text-[12px] text-sb-text">[signal:245]</button>
+                          <button class="rounded-lg border border-sb-border bg-black/20 px-2.5 py-1 text-[12px] text-sb-text">[signal:247]</button>
+                        </div>
+                      </div>
+                    </article>
+
+                    <article class="rounded-2xl border border-sb-border bg-black/14 p-4 transition hover:border-sb-borderStrong hover:bg-sb-elevated/65">
+                      <div class="flex items-start gap-3">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-sb-border bg-black/20 text-[15px] font-semibold">84</div>
+                        <div class="min-w-0 flex-1">
+                          <div class="flex flex-wrap items-center gap-2">
+                            <h3 class="text-[14px] font-semibold">Draft wrap notes before 16:30</h3>
+                            <span class="rounded-full border border-sb-border px-2 py-0.5 text-[11px] text-sb-muted">manual</span>
+                            <span class="rounded-full border border-sb-border px-2 py-0.5 text-[11px] text-sb-muted">shallow</span>
+                          </div>
+                          <p class="mt-2 text-[13px] leading-6 text-sb-muted">Creates clean evidence while context is fresh and reduces end-of-day proposal review time.</p>
+                        </div>
+                      </div>
+                    </article>
+
+                    <article class="rounded-2xl border border-sb-border bg-black/14 p-4 transition hover:border-sb-borderStrong hover:bg-sb-elevated/65">
+                      <div class="flex items-start gap-3">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-sb-border bg-black/20 text-[15px] font-semibold">79</div>
+                        <div class="min-w-0 flex-1">
+                          <div class="flex flex-wrap items-center gap-2">
+                            <h3 class="text-[14px] font-semibold">Review pending CHANGELOG proposal batch</h3>
+                            <span class="rounded-full border border-sb-border px-2 py-0.5 text-[11px] text-sb-muted">proposal</span>
+                            <span class="rounded-full border border-sb-border px-2 py-0.5 text-[11px] text-sb-muted">local approval</span>
+                          </div>
+                          <p class="mt-2 text-[13px] leading-6 text-sb-muted">Unblocks queued remote-facing outputs while keeping the approval contract intact.</p>
+                        </div>
+                      </div>
+                    </article>
+                  </div>
+
+                  <div class="mt-5 rounded-2xl border border-sb-border bg-black/16 p-4">
+                    <div class="flex items-center justify-between gap-3">
+                      <div>
+                        <div class="text-[12px] uppercase tracking-[0.18em] text-sb-faint">Time blocks</div>
+                        <div class="mt-1 text-[14px] font-semibold">Suggested pacing from current evidence</div>
+                      </div>
+                      <span class="rounded-full border border-sb-border px-2 py-0.5 text-[11px] text-sb-muted">meeting-aware later in Phase 2</span>
+                    </div>
+                    <div class="mt-4 grid gap-2 text-[13px]">
+                      <div class="flex items-center gap-3 rounded-xl border border-sb-border bg-sb-panel/70 px-3 py-2.5"><span class="w-16 text-sb-faint">09:00</span><span class="text-sb-text">Deep work on CXP-45827</span></div>
+                      <div class="flex items-center gap-3 rounded-xl border border-sb-border bg-sb-panel/70 px-3 py-2.5"><span class="w-16 text-sb-faint">11:00</span><span class="text-sb-text">Sweep changelog and capture fresh signals</span></div>
+                      <div class="flex items-center gap-3 rounded-xl border border-sb-border bg-sb-panel/70 px-3 py-2.5"><span class="w-16 text-sb-faint">15:30</span><span class="text-sb-text">Prepare wrap notes and proposal review</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="space-y-6">
+                <div class="rounded-[18px] border border-sb-border bg-sb-panel/92 p-5">
+                  <div class="flex items-center justify-between gap-4">
+                    <div>
+                      <div class="text-[12px] uppercase tracking-[0.18em] text-sb-faint">Evening wrap</div>
+                      <h2 class="mt-1 text-[18px] font-semibold tracking-tight">Completions and open gaps</h2>
+                    </div>
+                    <div class="rounded-full border border-sb-border bg-black/20 px-3 py-1.5 text-[12px] text-sb-muted">drafted 17:42</div>
+                  </div>
+
+                  <div class="mt-5 space-y-4">
+                    <section class="rounded-2xl border border-sb-border bg-black/16 p-4">
+                      <div class="flex items-center justify-between">
+                        <h3 class="text-[14px] font-semibold">Completions</h3>
+                        <span class="text-[12px] text-sb-faint">evidence-backed</span>
+                      </div>
+                      <div class="mt-4 space-y-3 text-[13px] leading-6 text-sb-muted">
+                        <div class="rounded-xl border border-sb-border bg-sb-panel/70 p-3">
+                          Closed backlog gap by updating the ranking logic and documenting phase state for handoff.
+                          <div class="mt-2 flex flex-wrap gap-2">
+                            <button class="rounded-lg border border-sb-border bg-black/20 px-2.5 py-1 text-[12px] text-sb-text">[signal:244]</button>
+                            <button class="rounded-lg border border-sb-border bg-black/20 px-2.5 py-1 text-[12px] text-sb-text">[signal:251]</button>
+                          </div>
+                        </div>
+                        <div class="rounded-xl border border-sb-border bg-sb-panel/70 p-3">
+                          Refreshed changelog and wrap docs so proposal review can happen without reconstructing the day from memory.
+                          <div class="mt-2 flex flex-wrap gap-2">
+                            <button class="rounded-lg border border-sb-border bg-black/20 px-2.5 py-1 text-[12px] text-sb-text">[signal:252]</button>
+                          </div>
+                        </div>
+                      </div>
+                    </section>
+
+                    <section class="rounded-2xl border border-sb-border bg-black/16 p-4">
+                      <div class="flex items-center justify-between">
+                        <h3 class="text-[14px] font-semibold">Gap questions</h3>
+                        <span class="text-[12px] text-sb-faint">for user review</span>
+                      </div>
+                      <ul class="mt-4 space-y-3 text-[13px] leading-6 text-sb-muted">
+                        <li class="rounded-xl border border-sb-border bg-sb-panel/70 px-3 py-3">Did ticket <span class="text-sb-text">CXP-45831</span> move forward, or should it stay in tomorrow's top 3?</li>
+                        <li class="rounded-xl border border-sb-border bg-sb-panel/70 px-3 py-3">There is little evidence after 14:00. Add a manual note if afternoon work was off-computer.</li>
+                      </ul>
+                    </section>
+                  </div>
+                </div>
+
+                <div class="rounded-[18px] border border-sb-border bg-sb-panel/92 p-5">
+                  <div class="flex items-center justify-between gap-4">
+                    <div>
+                      <div class="text-[12px] uppercase tracking-[0.18em] text-sb-faint">Signal detail</div>
+                      <div class="mt-1 text-[16px] font-semibold">[signal:244] selected</div>
+                    </div>
+                    <span class="rounded-full border border-sb-border px-2.5 py-1 text-[11px] text-sb-muted">raw_ref available</span>
+                  </div>
+                  <div class="mt-4 rounded-2xl border border-sb-border bg-black/16 p-4 text-[13px] leading-6 text-sb-muted">
+                    <div class="flex items-center gap-2 text-[12px] text-sb-faint">
+                      <span class="rounded-full border border-sb-border px-2 py-0.5">git</span>
+                      <span>14:22 UTC</span>
+                      <span>scope: sb</span>
+                    </div>
+                    <h3 class="mt-3 text-[15px] font-semibold text-sb-text">feat: phase 1 — MCP service, goals, ranker, plan/wrap, install</h3>
+                    <p class="mt-2">Signal body preview would appear here, followed by refs to JIRA, repos, or people. Clicking a citation anywhere on the page should open a panel like this with the raw source trail.</p>
+                    <div class="mt-4 rounded-xl border border-sb-border bg-sb-bg/70 p-3 text-[12px] text-sb-muted">
+                      <div class="text-sb-faint">raw_ref</div>
+                      <div class="mt-1 font-mono text-[12px] text-sb-text">/Users/praspr/Documents/code_home/sb/CHANGELOG.md#L42</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="rounded-[18px] border border-sb-border bg-sb-panel/92 p-5">
+                  <div class="flex items-center justify-between gap-4">
+                    <div>
+                      <div class="text-[12px] uppercase tracking-[0.18em] text-sb-faint">Pending proposals</div>
+                      <div class="mt-1 text-[16px] font-semibold">Approval queue preview</div>
+                    </div>
+                    <a class="text-[12px] text-sb-muted underline decoration-sb-border underline-offset-4 hover:text-sb-text" href="#">Open Proposals</a>
+                  </div>
+                  <div class="mt-4 space-y-2.5 text-[13px]">
+                    <div class="flex items-center justify-between rounded-xl border border-sb-border bg-black/16 px-3 py-3">
+                      <div>
+                        <div class="font-medium text-sb-text">#112 CHANGELOG proposal</div>
+                        <div class="mt-1 text-[12px] text-sb-muted">exact payload ready for approval</div>
+                      </div>
+                      <span class="rounded-full border border-sb-border bg-sb-accent/10 px-2 py-0.5 text-[11px] text-sb-text">pending</span>
+                    </div>
+                    <div class="flex items-center justify-between rounded-xl border border-sb-border bg-black/16 px-3 py-3 opacity-70">
+                      <div>
+                        <div class="font-medium text-sb-text">#111 CHANGELOG proposal</div>
+                        <div class="mt-1 text-[12px] text-sb-muted">already approved earlier today</div>
+                      </div>
+                      <span class="rounded-full border border-sb-border px-2 py-0.5 text-[11px] text-[#6FD1A9]">approved</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

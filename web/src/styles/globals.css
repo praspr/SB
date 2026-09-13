@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+* {
+  font-variant-numeric: tabular-nums;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(circle at top left, rgba(94, 106, 210, 0.14), transparent 28%),
+    radial-gradient(circle at 85% 10%, rgba(93, 168, 255, 0.08), transparent 20%),
+    linear-gradient(180deg, #0c111b 0%, #0a1018 100%);
+  background-attachment: fixed;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #253047;
+  border-radius: 999px;
+  border: 2px solid #121826;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
