@@ -99,7 +99,7 @@ export function CommandPalette() {
   const items = useMemo<PaletteItem[]>(() => {
     const combined: PaletteItem[] = []
 
-    combined.push(...(ledger.data ?? []).map((entry) => ({
+    combined.push(...(ledger.data ?? []).map((entry): PaletteItem => ({
       id: `ledger-${entry.id}`,
       group: 'Ledger',
       label: entry.summary,
@@ -108,7 +108,7 @@ export function CommandPalette() {
       icon: 'ledger',
     })))
 
-    combined.push(...(todos.data ?? []).map((task) => ({
+    combined.push(...(todos.data ?? []).map((task): PaletteItem => ({
       id: `todo-${task.id}`,
       group: 'Todos',
       label: task.title,
@@ -117,7 +117,7 @@ export function CommandPalette() {
       icon: 'todo',
     })))
 
-    combined.push(...(jiras.data ?? []).map((ticket) => ({
+    combined.push(...(jiras.data ?? []).map((ticket): PaletteItem => ({
       id: `jira-${ticket.key}`,
       group: 'JIRAs',
       label: `${ticket.key} · ${ticket.title}`,
@@ -126,7 +126,7 @@ export function CommandPalette() {
       icon: 'jira',
     })))
 
-    combined.push(...((webexAttention.data ?? []).slice(0, 8)).map((message) => ({
+    combined.push(...((webexAttention.data ?? []).slice(0, 8)).map((message): PaletteItem => ({
       id: `webex-${message.id}`,
       group: 'Webex',
       label: message.preview,
@@ -135,7 +135,7 @@ export function CommandPalette() {
       icon: 'webex',
     })))
 
-    combined.push(...(skills.data ?? []).slice(0, 8).map((skill) => ({
+    combined.push(...(skills.data ?? []).slice(0, 8).map((skill): PaletteItem => ({
       id: `skill-${skill.id}`,
       group: 'Skills',
       label: skill.name,
@@ -144,7 +144,7 @@ export function CommandPalette() {
       icon: 'skill',
     })))
 
-    combined.push(...(reports.data ?? []).map((item) => ({
+    combined.push(...(reports.data ?? []).map((item): PaletteItem => ({
       id: `report-${item.id}`,
       group: 'Reports',
       label: `Report citation ledger:${item.id}`,
