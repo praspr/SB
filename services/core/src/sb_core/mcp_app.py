@@ -29,6 +29,7 @@ def _mount_domains() -> None:
     from .goals_tools import mcp as goals_mcp
     from .ledger_tools import mcp as ledger_mcp
     from .reports_tools import mcp as reports_mcp
+    from .scheduler import mcp as scheduler_mcp
     from .skills import register_skill_tools
     from .ritual_tools import mcp as ritual_mcp
     from .sync_tools import mcp as sync_mcp
@@ -46,6 +47,7 @@ def _mount_domains() -> None:
     mcp.mount(ledger_mcp)
     mcp.mount(reports_mcp)
     mcp.mount(goals_mcp)
+    mcp.mount(scheduler_mcp)
 
     _seed_ledger_registry()
 
