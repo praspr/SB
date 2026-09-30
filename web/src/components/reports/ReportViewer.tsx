@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
-import { Copy, FilePlus2, Link2 } from 'lucide-react'
+import { Copy, FilePlus2, Link2, Mail } from 'lucide-react'
 import type { LedgerEntry } from '@/lib/ledger'
 import type { ReportResult } from '@/lib/reports'
 import { Button } from '@/components/ui/button'
+import { buildMailto, WebexPostButton } from '@/components/reports/WebexPostButton'
 
 type ReportViewerProps = {
   report?: ReportResult | null
@@ -11,6 +12,8 @@ type ReportViewerProps = {
   error?: string
   canSave?: boolean
   savePending?: boolean
+  template?: string
+  date?: string
   onCopy?: () => void
   onSave?: () => void
 }
@@ -71,6 +74,8 @@ export function ReportViewer({
   error,
   canSave,
   savePending,
+  template,
+  date,
   onCopy,
   onSave,
 }: ReportViewerProps) {
@@ -117,6 +122,18 @@ export function ReportViewer({
               <FilePlus2 size={14} />
               {savePending ? 'Saving note' : 'Save as ledger note'}
             </Button>
+            <WebexPostButton markdown={report.markdown} />
+            {template === 'wrap' && (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  window.location.href = buildMailto(date || new Date().toISOString().slice(0, 10), report.markdown)
+                }}
+              >
+                <Mail size={14} />
+                Email draft
+              </Button>
+            )}
           </div>
         </div>
 

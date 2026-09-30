@@ -210,6 +210,8 @@ export function ReportsView({
         error={error}
         canSave={Boolean(project && report?.markdown)}
         savePending={savePending}
+        template={template}
+        date={date}
         onCopy={onCopy}
         onSave={onSave}
       />
