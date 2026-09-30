@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { History, Play } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 import { ledgerLog, ledgerProjects, ledgerSearch } from '@/lib/ledger'
 import { reportDaily, reportMonthly, reportQuery, reportWeekly, type ReportResult } from '@/lib/reports'
 import { reportStandup, reportToday, reportWrap } from '@/lib/triage'
@@ -11,6 +12,8 @@ import type { LedgerEntry } from '@/lib/ledger'
 import { cn } from '@/lib/utils'
 
 type ReportTemplate = 'daily' | 'weekly' | 'monthly' | 'query' | 'today' | 'wrap' | 'standup'
+
+const VALID_TEMPLATES: ReportTemplate[] = ['daily', 'weekly', 'monthly', 'query', 'today', 'wrap', 'standup']
 
 type RecentRun = {
   template: ReportTemplate
@@ -221,7 +224,11 @@ export function ReportsView({
 
 export function ReportsPage() {
   const today = new Date().toISOString().slice(0, 10)
-  const [template, setTemplate] = useState<ReportTemplate>('daily')
+  const [searchParams] = useSearchParams()
+  const templateParam = searchParams.get('template') as ReportTemplate | null
+  const initialTemplate: ReportTemplate =
+    templateParam && VALID_TEMPLATES.includes(templateParam) ? templateParam : 'daily'
+  const [template, setTemplate] = useState<ReportTemplate>(initialTemplate)
   const [project, setProject] = useState('')
   const [date, setDate] = useState(today)
   const [month, setMonth] = useState(today.slice(0, 7))
