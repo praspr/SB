@@ -164,6 +164,25 @@ def list_muted_spaces(conn: sqlite3.Connection) -> list[dict]:
     return result
 
 
+def get_identity(conn: sqlite3.Connection) -> dict | None:
+    """Return the cached ``{email, display_name, cached_at}`` for the
+    signed-in Webex user, or None if identity has never been captured."""
+    row = conn.execute("SELECT * FROM sb_webex_identity LIMIT 1").fetchone()
+    return dict(row) if row is not None else None
+
+
+def set_identity(conn: sqlite3.Connection, email: str, display_name: str) -> dict:
+    """Cache the signed-in Webex user's identity. Single-row table: any
+    existing identity is replaced (a fresh sign-in supersedes the old one)."""
+    conn.execute("DELETE FROM sb_webex_identity")
+    conn.execute(
+        "INSERT INTO sb_webex_identity (email, display_name, cached_at) VALUES (?, ?, ?)",
+        (email, display_name, _now()),
+    )
+    conn.commit()
+    return {"email": email, "display_name": display_name, "cached_at": _now()}
+
+
 def _meeting(row: sqlite3.Row) -> dict:
     item = dict(row)
     try:

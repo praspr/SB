@@ -7,8 +7,10 @@ certificate store. Verification is never disabled.
 from __future__ import annotations
 
 import base64
+import functools
 import hashlib
 import json
+import logging
 import secrets
 import time
 import urllib.parse
@@ -20,8 +22,15 @@ import truststore
 
 truststore.inject_into_ssl()
 
+logger = logging.getLogger(__name__)
+
 MCP_URL = "https://aicoding-mcp-webexapis.cisco.com/mcp/"
 _METADATA_URL = "https://aicoding-mcp-webexapis.cisco.com/.well-known/oauth-authorization-server/mcp"
+# Standard Webex REST API -- used only for the two read-only, single-resource
+# lookups (me, one message-by-id) that the hosted MCP tool surface does not
+# cleanly expose. Same bearer token as the hosted MCP; no separate auth.
+WEBEX_API_BASE = "https://webexapis.com/v1"
+_PARENT_LOOKUP_CACHE_SIZE = 500
 READ_SCOPES = " ".join(
     [
         "meeting:schedules_read",
@@ -192,6 +201,72 @@ def authenticated() -> bool:
     )
 
 
+# ---------------------------------------------------------------------------
+# Standard Webex REST lookups: me + single message by id
+#
+# These bypass the hosted MCP tool surface (which does not cleanly expose a
+# single-resource "get message by id" or "who am I" call) and hit the
+# standard Webex API directly with the same bearer token. Both are read-only
+# GETs; neither is retried automatically -- a transient failure here must
+# never fail the surrounding sync.
+# ---------------------------------------------------------------------------
+
+
+def _fetch_me(token: str, *, timeout: float = 15.0) -> dict | None:
+    """Fetch {email, display_name} for the authenticated user, or None on
+    any error (never raises)."""
+    try:
+        response = httpx.get(
+            f"{WEBEX_API_BASE}/people/me",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=timeout,
+        )
+        response.raise_for_status()
+        data = response.json()
+    except httpx.HTTPError as exc:
+        logger.warning("webex get_me failed: %s", type(exc).__name__)
+        return None
+    emails = data.get("emails") or []
+    email = str(emails[0]) if emails else ""
+    if not email:
+        return None
+    return {"email": email, "display_name": str(data.get("displayName") or "")}
+
+
+def _fetch_message_uncached(token: str, message_id: str, *, timeout: float = 15.0) -> dict | None:
+    """Fetch one message by id. Returns None on 404 or any other error."""
+    try:
+        response = httpx.get(
+            f"{WEBEX_API_BASE}/messages/{message_id}",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=timeout,
+        )
+        if response.status_code == 404:
+            return None
+        response.raise_for_status()
+        data = response.json()
+    except httpx.HTTPError as exc:
+        logger.warning("webex get_message failed: %s", type(exc).__name__)
+        return None
+    return {
+        "id": str(data.get("id") or message_id),
+        "personEmail": str(data.get("personEmail") or ""),
+        "personName": str(data.get("personDisplayName") or data.get("personEmail") or ""),
+        "text": str(data.get("text") or ""),
+    }
+
+
+@functools.lru_cache(maxsize=_PARENT_LOOKUP_CACHE_SIZE)
+def _fetch_message_cached(token: str, message_id: str) -> dict | None:
+    """Bounded in-process cache (LRU, 500 entries) over ``_fetch_message_uncached``.
+
+    Keyed on (token, message_id) so a token rotation never serves a stale
+    cross-account cache entry. Not persisted between processes -- the
+    decorator's cache lives only as long as this module stays imported.
+    """
+    return _fetch_message_uncached(token, message_id)
+
+
 class McpClient:
     """Minimal Streamable HTTP client. It never logs message bodies or tokens."""
 
@@ -271,3 +346,14 @@ class McpClient:
             except json.JSONDecodeError:
                 return {"text": content[0]["text"][:180]}
         return {}
+
+    def get_me(self) -> dict | None:
+        """Return ``{email, display_name}`` for the authenticated user via
+        the standard Webex REST API. None on any error; never raises."""
+        return _fetch_me(self._token)
+
+    def get_message(self, message_id: str) -> dict | None:
+        """Return ``{id, personEmail, personName, text}`` for one message,
+        via a bounded in-process LRU cache. None on 404 or any other error;
+        never raises."""
+        return _fetch_message_cached(self._token, message_id)
