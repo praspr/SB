@@ -1,10 +1,13 @@
 import { NavLink } from 'react-router-dom'
-import { ListTodo, Calendar, MessageSquare, Ticket, Library, Radio, Sun, NotebookPen, Megaphone, ChevronLeft, ChevronRight, Settings, FileText, BookOpen, Inbox } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { ListTodo, Calendar, MessageSquare, Ticket, Library, Radio, ChevronLeft, ChevronRight, Settings, FileText, BookOpen, Inbox } from 'lucide-react'
 import { SettingsPopover } from '@/components/layout/SettingsPopover'
+import { webexAttentionRanked } from '@/lib/triage'
 import { useUiStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
 const navItems = [
+  { to: '/attention', label: 'Attention', icon: Inbox, end: false },
   { to: '/reports', label: 'Reports', icon: FileText, end: false },
   { to: '/ledger', label: 'Ledger', icon: BookOpen, end: false },
   { to: '/proposals', label: 'Proposals', icon: Inbox, end: false },
@@ -14,14 +17,17 @@ const navItems = [
   { to: '/webex', label: 'Webex', icon: MessageSquare, end: false },
   { to: '/skills', label: 'Skills', icon: Library, end: false },
   { to: '/signals', label: 'Signals', icon: Radio, end: false },
-  { to: '/today', label: 'Today', icon: Sun, end: false },
-  { to: '/wrap', label: 'Wrap', icon: NotebookPen, end: false },
-  { to: '/standup', label: 'Standup', icon: Megaphone, end: false },
 ]
 
 export function Sidebar() {
   const collapsed = useUiStore((s) => s.sidebarCollapsed)
   const toggleSidebar = useUiStore((s) => s.toggleSidebar)
+  const attention = useQuery({
+    queryKey: ['triage', 'attention', 'sidebar'],
+    queryFn: () => webexAttentionRanked(30),
+    staleTime: 60_000,
+  })
+  const unreadCount = attention.data?.length ?? 0
 
   return (
     <aside
@@ -73,10 +79,19 @@ export function Sidebar() {
                 collapsed && 'justify-center px-0'
               )
             }
-            title={collapsed ? item.label : undefined}
+           title={collapsed ? item.label : undefined}
           >
             <item.icon size={18} className="shrink-0" />
-            {!collapsed && <span>{item.label}</span>}
+            {!collapsed && (
+              <>
+                <span>{item.label}</span>
+                {item.to === '/attention' && unreadCount > 0 ? (
+                  <span className="ml-auto rounded-full border border-border-subtle bg-black/20 px-2 py-0.5 text-12 tabular text-text-secondary">
+                    {unreadCount}
+                  </span>
+                ) : null}
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
