@@ -1,0 +1,8 @@
+# Local credential caches and env files must never be committed.
+.env
+.cache/
+**/.env
+**/.cache/
+.agents/
+__pycache__/
+*.pyc
