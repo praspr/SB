@@ -6,7 +6,7 @@ describe('reports page', () => {
   it('shows the empty state before a run', () => {
     const html = renderToStaticMarkup(
       <ReportsView
-        template="daily"
+        template="today"
         onTemplate={() => undefined}
         project=""
         onProject={() => undefined}
@@ -30,6 +30,7 @@ describe('reports page', () => {
     expect(html).toContain('Reports')
     expect(html).toContain('Pick a template and hit Run.')
     expect(html).toContain('Recent runs')
+    expect(html).toContain('today')
   })
 
   it('renders report actions and citations once data exists', () => {

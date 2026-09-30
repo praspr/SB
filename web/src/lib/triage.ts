@@ -49,6 +49,7 @@ export type RitualMarkdownResult = {
   markdown: string
   citations: number[]
   date?: string
+  error?: string
 }
 
 export function webexAttentionRanked(limit = 30): Promise<AttentionItem[]> {

@@ -1,15 +1,16 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { History, Play, Sparkles } from 'lucide-react'
+import { History, Play } from 'lucide-react'
 import { ledgerLog, ledgerProjects, ledgerSearch } from '@/lib/ledger'
 import { reportDaily, reportMonthly, reportQuery, reportWeekly, type ReportResult } from '@/lib/reports'
+import { reportStandup, reportToday, reportWrap } from '@/lib/triage'
 import { ReportViewer } from '@/components/reports/ReportViewer'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { LedgerEntry } from '@/lib/ledger'
 import { cn } from '@/lib/utils'
 
-type ReportTemplate = 'daily' | 'weekly' | 'monthly' | 'query'
+type ReportTemplate = 'daily' | 'weekly' | 'monthly' | 'query' | 'today' | 'wrap' | 'standup'
 
 type RecentRun = {
   template: ReportTemplate
@@ -101,7 +102,7 @@ export function ReportsView({
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
           <div className="space-y-4">
             <div className="flex flex-wrap gap-2">
-              {(['daily', 'weekly', 'monthly', 'query'] as ReportTemplate[]).map((value) => (
+              {(['today', 'wrap', 'standup', 'daily', 'weekly', 'monthly', 'query'] as ReportTemplate[]).map((value) => (
                 <button
                   key={value}
                   type="button"
@@ -248,6 +249,9 @@ export function ReportsPage() {
       if (template === 'daily') return reportDaily(date, project || undefined)
       if (template === 'weekly') return reportWeekly(date, project || undefined)
       if (template === 'monthly') return reportMonthly(month, project || undefined)
+      if (template === 'today') return reportToday(date)
+      if (template === 'wrap') return reportWrap()
+      if (template === 'standup') return reportStandup(date)
       return reportQuery({
         q: query,
         project: project || undefined,
@@ -263,7 +267,13 @@ export function ReportsPage() {
       }
       setError(undefined)
       setReport(data)
-      const label = template === 'query' ? query || 'ad-hoc query' : template === 'monthly' ? month : date
+      const label = template === 'query'
+        ? query || 'ad-hoc query'
+        : template === 'monthly'
+          ? month
+          : template === 'wrap'
+            ? 'wrap'
+            : date
       const next = [{ template, project, label, at: new Date().toLocaleString() }, ...recentRuns].slice(0, 10)
       setRecentRuns(next)
       saveRecentRuns(next)
