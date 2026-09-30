@@ -94,11 +94,22 @@ def test_search_ledger_full_text_query(tmp_path: Path) -> None:
     conn = connect(tmp_path / "core.db")
     try:
         append_ledger(conn, project="sb", summary="Debugged APISIX 401 token issue")
+        append_ledger(conn, project="sb", summary="Closed foo bar follow-up for CXP-54493")
         append_ledger(conn, project="sb", summary="Unrelated bullet about todos")
 
         results = search_ledger(conn, q="APISIX")
         assert len(results) == 1
         assert "APISIX" in results[0]["summary"]
+
+        phrase_results = search_ledger(conn, q="foo bar")
+        assert len(phrase_results) == 1
+        assert "foo bar" in phrase_results[0]["summary"]
+
+        jiraish_results = search_ledger(conn, q="CXP-54493")
+        assert len(jiraish_results) == 1
+        assert "CXP-54493" in jiraish_results[0]["summary"]
+
+        assert search_ledger(conn, q="nonexistent-topic") == []
     finally:
         conn.close()
 

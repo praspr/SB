@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import sqlite3
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -34,6 +35,17 @@ def _row_to_dict(row: sqlite3.Row) -> dict:
     d["refs"] = json.loads(d.get("refs") or "[]")
     d["redaction_applied"] = bool(d.get("redaction_applied"))
     return d
+
+
+_FTS_OPERATOR_RE = re.compile(r'\b(?:AND|OR|NOT|NEAR)\b|[()^+\-:*]')
+
+
+def _sanitize_fts_query(q: str) -> str:
+    cleaned = _FTS_OPERATOR_RE.sub(" ", q)
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip().replace('"', '')
+    if not cleaned:
+        return ''
+    return f'"{cleaned}"'
 
 
 # ---------------------------------------------------------------------------
@@ -169,6 +181,9 @@ def search_ledger(
     where = f"AND {' AND '.join(clauses)}" if clauses else ""
 
     if q:
+        fts_query = _sanitize_fts_query(q)
+        if not fts_query:
+            return []
         sql = f"""
             SELECT l.* FROM sb_ledger_fts f
             JOIN sb_ledger l ON l.id = f.rowid
@@ -176,7 +191,7 @@ def search_ledger(
             ORDER BY l.ts DESC
             LIMIT ?
         """
-        params_full = [q, *params, limit]
+        params_full = [fts_query, *params, limit]
     else:
         where_all = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         sql = f"""
@@ -330,8 +345,12 @@ def get_context(
         for ref in entry["refs"]:
             if not isinstance(ref, dict):
                 continue
-            key = (ref.get("kind"), ref.get("value"))
-            if key not in tracked_refs and ref.get("kind") and ref.get("value"):
+            kind = ref.get("kind")
+            value = ref.get("value")
+            if not isinstance(kind, str) or not isinstance(value, str):
+                continue
+            key = (kind, value)
+            if key not in tracked_refs:
                 tracked_refs[key] = ref
 
     return {
