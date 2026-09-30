@@ -29,3 +29,7 @@
 - Add evidence-backed wraps and local CHANGELOG proposals. Every factual bullet cites `[signal:N]`, approval only appends `CHANGELOG.md` under a configured root, and the Wrap page can approve or reject a pending proposal.
 - Add a deterministic standup of 5–8 bullets drawn from today's plan, the previous day's wrap, and high-priority todos, plus a Standup page that can copy them.
 - Document the single `sb-core` process in the README architecture. The old two-server launch instructions are replaced by the prepared, not-yet-applied cutover.
+
+## [2026-09-30]
+- **19:17:50 UTC** · **Reviewed** it looks like the certificate used above is signed by an internal signer and there are some other hostnames that need to be used. I'll make a new PR to use them per-env. `Common AI - Agent Team`
+

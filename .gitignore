@@ -60,3 +60,4 @@ services/core/salvage/
 *.key
 !config.example.*
 !*.example.env
+\n# ledger runtime lockfile (created by ledger_sync flock)\nCHANGELOG.md.lock\n
