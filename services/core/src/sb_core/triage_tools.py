@@ -71,15 +71,19 @@ def _hours_since(value: str | None) -> float | None:
     return round(max(0.0, (_now() - dt).total_seconds() / 3600), 1)
 
 
-def _triage_kind(message: dict[str, Any]) -> str:
-    preview = str(message.get("preview") or "")
+def _triage_kind(message: dict[str, Any]) -> str | None:
+    """Classify an attention item.
+
+    Only returns ``"mention"`` or ``"dm"`` — anything else returns None so the
+    caller can drop it. This keeps Attention narrow: 1:1 DMs and explicit
+    @mentions only. Thread-replies to the user's own messages will be a
+    follow-up once a ``parent_message_id`` column exists (see PENDING notes).
+    """
     if bool(message.get("is_mention")):
         return "mention"
     if bool(message.get("is_dm")):
         return "dm"
-    if _QUESTION_RE.search(preview):
-        return "question"
-    return "question"
+    return None
 
 
 def _suggested_action(kind: str) -> str:
@@ -328,6 +332,8 @@ def _decorate_attention(ranked: list[dict[str, Any]]) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
     for row in ranked:
         kind = _triage_kind(row)
+        if kind is None:
+            continue
         result.append(
             {
                 **row,
