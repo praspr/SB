@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from contextlib import AsyncExitStack, asynccontextmanager
-
+import asyncio
 import html
+import logging
+from contextlib import AsyncExitStack, asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -17,6 +18,19 @@ from .store.db import connect
 
 mcp_http_app = mcp.http_app(path="/mcp", transport="http")
 mcp_sse_app = mcp.http_app(path="/sse", transport="sse")
+logger = logging.getLogger("sb_core.scheduler")
+
+
+async def _scheduler_loop() -> None:
+    """Evaluate local schedules in the existing sb-core process."""
+    from .scheduler import run_due_schedules
+
+    while True:
+        await asyncio.sleep(300)
+        try:
+            await asyncio.to_thread(run_due_schedules)
+        except Exception:
+            logger.exception("scheduled runner failed")
 
 
 @asynccontextmanager
@@ -26,10 +40,15 @@ async def lifespan(_app: FastAPI):
         refresh_skill_surface(mcp, conn)
     finally:
         conn.close()
-    async with AsyncExitStack() as stack:
-        await stack.enter_async_context(mcp_http_app.lifespan(mcp_http_app))
-        await stack.enter_async_context(mcp_sse_app.lifespan(mcp_sse_app))
-        yield
+    scheduler_task = asyncio.create_task(_scheduler_loop())
+    try:
+        async with AsyncExitStack() as stack:
+            await stack.enter_async_context(mcp_http_app.lifespan(mcp_http_app))
+            await stack.enter_async_context(mcp_sse_app.lifespan(mcp_sse_app))
+            yield
+    finally:
+        scheduler_task.cancel()
+        await asyncio.gather(scheduler_task, return_exceptions=True)
 
 
 app = FastAPI(

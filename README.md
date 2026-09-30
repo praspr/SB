@@ -82,6 +82,13 @@ root. The dashboard shows wraps and proposals at `/wrap`. `standup` builds 5–8
 bullets from today's plan, the previous day's wrap, and open high-priority
 todos. The dashboard shows that at `/standup`.
 
+The scheduler runs inside `sb-core` every five minutes. New installations seed
+an hourly pull-only JIRA sync and a 15-minute pull-only Webex sync; both can be
+reviewed or replaced in Settings → Schedules. JIRA rows, Webex attention
+messages, and meeting todo proposals can open the todo dialog with source
+references prefilled. Tracked JIRAs can be untracked without deleting their
+local markdown mirror.
+
 ```bash
 cd sb/services/core
 uv sync --group dev
@@ -187,7 +194,7 @@ today's work, and a read-only cited chat over local second-brain data.
 | `/signals` | Local evidence ledger and adapter state | live |
 | `/today`, `/wrap`, `/standup` | Daily chief-of-staff rituals | live |
 | `/todos` | sb-todos SQLite (add + complete work end-to-end) | live |
-| `/jira` | pull-only JIRA mirror from `ciq/docs/jira/tickets/` | live |
+| `/jira` | pull-only JIRA mirror, plus tracked keys from a pasted link | live |
 | `/meetings` | Mirrored Webex meetings and join links | live after sign-in and sync |
 | `/webex` | Attention, spaces, and cited space summaries | live after sign-in and sync |
 

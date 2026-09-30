@@ -4,6 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { AttentionItem } from '@/lib/triage'
+import { useUiStore } from '@/lib/store'
 
 function tone(staleness?: number | null) {
   if (staleness == null || staleness < 4) return 'bg-success'
@@ -22,6 +23,7 @@ export function AttentionRow({ item, onLog }: AttentionRowProps) {
   const [verb, setVerb] = useState(item.suggested_action_verb || 'Discussed')
   const [summary, setSummary] = useState(item.preview)
   const [saving, setSaving] = useState(false)
+  const openAddTodo = useUiStore((state) => state.openAddTodo)
 
   return (
     <div className="flex gap-3 rounded-xl border border-border-subtle bg-bg-panel/92 p-4 transition-colors duration-fast ease-out hover:border-border-strong hover:bg-bg-elevated">
@@ -35,6 +37,20 @@ export function AttentionRow({ item, onLog }: AttentionRowProps) {
         <p className="mt-1 line-clamp-2 text-13 leading-6 text-text-secondary">{item.preview}</p>
       </div>
       <div className="flex shrink-0 items-start gap-2">
+        <Button
+          variant="secondary"
+          onClick={() =>
+            openAddTodo({
+              title: item.preview,
+              description: `${item.sender_name} in ${item.space_name}\n\n${item.preview}\n\n[webex:${item.id}]`,
+              priority: item.is_mention ? 2 : 3,
+              external_source: 'webex',
+              external_ref: item.id,
+            })
+          }
+        >
+          Create todo
+        </Button>
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <Button variant="secondary">Log to ledger</Button>

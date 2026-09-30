@@ -3,7 +3,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { ScheduledRitual } from '@/lib/schedules'
 
-export const RITUAL_OPTIONS = ['wrap_day', 'standup', 'plan_day', 'report_daily', 'report_weekly', 'report_monthly']
+export const RITUAL_OPTIONS = [
+  'wrap_day',
+  'standup',
+  'plan_day',
+  'report_daily',
+  'report_weekly',
+  'report_monthly',
+  'sync_jira',
+  'sync_webex',
+]
 
 type SchedulesTabProps = {
   schedules: ScheduledRitual[]
@@ -102,7 +111,7 @@ export function SchedulesTab({
           </Button>
         </div>
         <div className="mt-2 text-12 text-text-muted">
-          Schedules run every 5 minutes via the sb-scheduler launchd job.
+          Schedules run every 5 minutes inside the local sb-core service.
         </div>
       </div>
     </div>

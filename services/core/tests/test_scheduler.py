@@ -71,7 +71,9 @@ def test_last_scheduled_at_finds_recent_match() -> None:
 
 def test_last_scheduled_at_returns_none_for_impossible_cron() -> None:
     # Feb 30th never exists.
-    result = sched.last_scheduled_at("0 0 30 2 *", datetime(2026, 3, 1, 0, 0), lookback_minutes=60)
+    result = sched.last_scheduled_at(
+        "0 0 30 2 *", datetime(2026, 3, 1, 0, 0), lookback_minutes=60
+    )
     assert result is None
 
 
@@ -112,7 +114,32 @@ def test_add_scheduled_ritual_and_list(tmp_path, monkeypatch) -> None:
 def test_add_scheduled_ritual_rejects_unknown_ritual(tmp_path, monkeypatch) -> None:
     _patch_conn(monkeypatch, tmp_path / "core.db")
     with pytest.raises(ValueError):
-        sched.add_scheduled_ritual(name="bad", ritual="nonexistent_ritual", cron="* * * * *")
+        sched.add_scheduled_ritual(
+            name="bad", ritual="nonexistent_ritual", cron="* * * * *"
+        )
+
+
+def test_sync_jobs_are_available_and_raise_on_pull_errors(monkeypatch) -> None:
+    dispatch = sched._ritual_dispatch()
+    assert {"sync_jira", "sync_webex"} <= dispatch.keys()
+
+    monkeypatch.setattr(
+        "sb_jira.mcp_tools.sync_jira",
+        lambda: {"errors": ["Atlassian unavailable"]},
+    )
+    with pytest.raises(RuntimeError, match="Atlassian unavailable"):
+        sched._ritual_dispatch()["sync_jira"]()
+
+
+def test_default_sync_schedules_are_seeded_once(tmp_path, monkeypatch) -> None:
+    _patch_conn(monkeypatch, tmp_path / "core.db")
+    sched.ensure_default_sync_schedules()
+    sched.ensure_default_sync_schedules()
+    rows = sched.list_scheduled_rituals()
+    assert [(row["name"], row["ritual"], row["cron"]) for row in rows] == [
+        ("JIRA hourly sync", "sync_jira", "0 * * * *"),
+        ("Webex 15-minute sync", "sync_webex", "*/15 * * * *"),
+    ]
 
 
 def test_add_scheduled_ritual_rejects_bad_cron(tmp_path, monkeypatch) -> None:
@@ -123,7 +150,9 @@ def test_add_scheduled_ritual_rejects_bad_cron(tmp_path, monkeypatch) -> None:
 
 def test_delete_scheduled_ritual(tmp_path, monkeypatch) -> None:
     _patch_conn(monkeypatch, tmp_path / "core.db")
-    created = sched.add_scheduled_ritual(name="temp", ritual="standup", cron="* * * * *")
+    created = sched.add_scheduled_ritual(
+        name="temp", ritual="standup", cron="* * * * *"
+    )
     result = sched.delete_scheduled_ritual(created["id"])
     assert result["deleted"] is True
     assert sched.list_scheduled_rituals() == []
@@ -154,7 +183,9 @@ def test_run_due_schedules_runs_matching_ritual(tmp_path, monkeypatch) -> None:
     assert rows[0]["last_run_at"] is not None
 
 
-def test_run_due_schedules_is_idempotent_within_same_minute(tmp_path, monkeypatch) -> None:
+def test_run_due_schedules_is_idempotent_within_same_minute(
+    tmp_path, monkeypatch
+) -> None:
     db_path = tmp_path / "core.db"
     _patch_conn(monkeypatch, db_path)
     sched.add_scheduled_ritual(name="always", ritual="standup", cron="* * * * *")
@@ -178,11 +209,15 @@ def test_run_due_schedules_is_idempotent_within_same_minute(tmp_path, monkeypatc
 def test_run_due_schedules_skips_disabled(tmp_path, monkeypatch) -> None:
     db_path = tmp_path / "core.db"
     _patch_conn(monkeypatch, db_path)
-    sched.add_scheduled_ritual(name="disabled", ritual="standup", cron="* * * * *", enabled=False)
+    sched.add_scheduled_ritual(
+        name="disabled", ritual="standup", cron="* * * * *", enabled=False
+    )
 
     called = {"count": 0}
     monkeypatch.setattr(
-        sched, "_ritual_dispatch", lambda: {"standup": lambda **kw: called.update(count=called["count"] + 1)}
+        sched,
+        "_ritual_dispatch",
+        lambda: {"standup": lambda **kw: called.update(count=called["count"] + 1)},
     )
 
     result = sched.run_due_schedules()
@@ -190,7 +225,9 @@ def test_run_due_schedules_skips_disabled(tmp_path, monkeypatch) -> None:
     assert result["outcomes"] == {}
 
 
-def test_run_due_schedules_records_error_status_without_raising(tmp_path, monkeypatch) -> None:
+def test_run_due_schedules_records_error_status_without_raising(
+    tmp_path, monkeypatch
+) -> None:
     db_path = tmp_path / "core.db"
     _patch_conn(monkeypatch, db_path)
     sched.add_scheduled_ritual(name="broken", ritual="wrap_day", cron="* * * * *")

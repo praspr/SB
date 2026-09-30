@@ -170,6 +170,22 @@ def _ritual_dispatch() -> dict[str, Callable]:
         finally:
             conn.close()
 
+    def _sync_jira(**_kwargs) -> dict:
+        from sb_jira.mcp_tools import sync_jira
+
+        result = sync_jira()
+        if result.get("errors"):
+            raise RuntimeError("; ".join(result["errors"]))
+        return result
+
+    def _sync_webex(**_kwargs) -> dict:
+        from .webex_tools import sync_webex
+
+        result = sync_webex()
+        if result.get("errors"):
+            raise RuntimeError("; ".join(result["errors"]))
+        return result
+
     return {
         "wrap_day": _wrap_day,
         "standup": _standup,
@@ -177,6 +193,8 @@ def _ritual_dispatch() -> dict[str, Callable]:
         "report_daily": _report_daily,
         "report_weekly": _report_weekly,
         "report_monthly": _report_monthly,
+        "sync_jira": _sync_jira,
+        "sync_webex": _sync_webex,
     }
 
 
@@ -195,8 +213,8 @@ def add_scheduled_ritual(
     target_dir: Optional[str] = None,
 ) -> dict:
     """Register a scheduled ritual. ``ritual`` must be one of: wrap_day,
-    standup, plan_day, report_daily, report_weekly, report_monthly. ``cron``
-    is a 5-field crontab string evaluated in local time."""
+    standup, plan_day, report_daily, report_weekly, report_monthly, sync_jira,
+    sync_webex. ``cron`` is a 5-field crontab string evaluated in local time."""
     if ritual not in _ritual_dispatch():
         raise ValueError(f"unknown ritual: {ritual!r}")
     parse_cron(cron)  # validate eagerly; raises ValueError on bad input
@@ -208,7 +226,14 @@ def add_scheduled_ritual(
             INSERT INTO sb_scheduled_rituals (name, ritual, args_json, cron, target_dir, enabled)
             VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (name, ritual, json.dumps(args or {}), cron, target_dir, 1 if enabled else 0),
+            (
+                name,
+                ritual,
+                json.dumps(args or {}),
+                cron,
+                target_dir,
+                1 if enabled else 0,
+            ),
         )
         conn.commit()
         row = conn.execute(
@@ -219,14 +244,37 @@ def add_scheduled_ritual(
         conn.close()
 
 
+def ensure_default_sync_schedules() -> None:
+    """Install safe pull-only defaults once, preserving user-edited schedules."""
+    defaults = (
+        ("JIRA hourly sync", "sync_jira", "0 * * * *"),
+        ("Webex 15-minute sync", "sync_webex", "*/15 * * * *"),
+    )
+    conn = _get_conn()
+    try:
+        for name, ritual, cron in defaults:
+            conn.execute(
+                """
+                INSERT INTO sb_scheduled_rituals
+                  (name, ritual, args_json, cron, enabled)
+                SELECT ?, ?, '{}', ?, 1
+                WHERE NOT EXISTS (
+                  SELECT 1 FROM sb_scheduled_rituals WHERE name = ?
+                )
+                """,
+                (name, ritual, cron, name),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 @mcp.tool()
 def list_scheduled_rituals() -> list[dict]:
     """List every scheduled ritual (enabled and disabled)."""
     conn = _get_conn()
     try:
-        rows = conn.execute(
-            "SELECT * FROM sb_scheduled_rituals ORDER BY id"
-        ).fetchall()
+        rows = conn.execute("SELECT * FROM sb_scheduled_rituals ORDER BY id").fetchall()
         return [_row_to_schedule(row) for row in rows]
     finally:
         conn.close()

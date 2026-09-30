@@ -91,6 +91,7 @@ export type JiraTicket = {
   description: string // short summary text (mock)
   url: string // https://cisco-cxe.atlassian.net/browse/CXP-45827
   file_path?: string // 'ciq/docs/jira/tickets/CXP-45827.md'
+  tracked?: boolean
 }
 
 // --- helpers to build relative dates so "today" fixtures always work ---

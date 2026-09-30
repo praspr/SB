@@ -79,7 +79,7 @@ describe('SchedulesTab', () => {
         onDelete={() => undefined}
       />
     )
-    for (const option of ['wrap_day', 'standup', 'plan_day', 'report_daily', 'report_weekly', 'report_monthly']) {
+    for (const option of ['wrap_day', 'standup', 'plan_day', 'report_daily', 'report_weekly', 'report_monthly', 'sync_jira', 'sync_webex']) {
       expect(html).toContain(option)
     }
   })

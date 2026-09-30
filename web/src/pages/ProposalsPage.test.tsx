@@ -38,4 +38,24 @@ describe('proposals page', () => {
     expect(html).toContain('Accept')
     expect(html).toContain('Reject')
   })
+
+  it('offers todo creation for meeting todo proposals', () => {
+    const html = renderToStaticMarkup(
+      <ProposalsView
+        proposals={[
+          {
+            id: 9,
+            type: 'todo',
+            title: 'Todo · Follow up with Ada',
+            status: 'pending',
+            payload: JSON.stringify({ title: 'Follow up with Ada', priority: 2, meeting_id: 'meet-1' }),
+          },
+        ]}
+        onRefresh={() => undefined}
+        onApprove={() => undefined}
+        onReject={() => undefined}
+      />,
+    )
+    expect(html).toContain('Create todo')
+  })
 })

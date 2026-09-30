@@ -48,6 +48,7 @@ describe('attention page', () => {
     expect(html).toContain('Mentions')
     expect(html).toContain('Ada')
     expect(html).toContain('Log to ledger')
+    expect(html).toContain('Create todo')
     expect(html).toContain('Logged as [ledger:12]')
   })
 
