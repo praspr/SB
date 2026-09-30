@@ -15,3 +15,4 @@
 - Add changelog, git, todo, and local JIRA signal adapters with `sync_adapters`, `sync_status`, and `search_signals`, and a Signals page that cites `[signal:N]`.
 - Add deterministic daily planning (`plan_day`, `get_day`, `get_goals`, `get_roots`, `whoami`) that writes plan columns without overwriting wrap, plus a Today page.
 - Add evidence-backed wraps and local CHANGELOG proposals. Every factual bullet cites `[signal:N]`, approval only appends `CHANGELOG.md` under a configured root, and the Wrap page can approve or reject a pending proposal.
+- Add a deterministic standup of 5–8 bullets drawn from today's plan, the previous day's wrap, and high-priority todos, plus a Standup page that can copy them.

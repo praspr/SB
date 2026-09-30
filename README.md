@@ -80,7 +80,9 @@ The dashboard shows them at `/signals`. `plan_day` ranks open todos into
 `sb_daily` plan columns without overwriting wrap. The dashboard shows that
 plan at `/today`. `wrap_day` writes the wrap columns and queues a local
 CHANGELOG proposal. Approval appends only a `CHANGELOG.md` under a configured
-root. The dashboard shows wraps and proposals at `/wrap`.
+root. The dashboard shows wraps and proposals at `/wrap`. `standup` builds 5–8
+bullets from today's plan, the previous day's wrap, and open high-priority
+todos. The dashboard shows that at `/standup`.
 
 ```bash
 cd sb/services/core
