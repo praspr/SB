@@ -41,6 +41,17 @@ dist/
 .vscode/launch.json
 *.swp
 *~
+.cursor/
+
+# ─── Generated TypeScript / Vite artifacts ──────────────────────────
+*.tsbuildinfo
+web/vite.config.js
+web/vite.config.d.ts
+web/vite/cursor-auth.js
+web/vite/cursor-auth.d.ts
+
+# ─── Uncommitted prototype salvage (not part of a step commit) ─────
+services/core/salvage/
 
 # ─── Secrets / env ──────────────────────────────────────────────────
 .env
