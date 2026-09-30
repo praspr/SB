@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.praspr.sb-morning-open</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/sh</string>
+        <string>-c</string>
+        <string>curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:5173/ | grep -q '^2' &amp;&amp; open http://127.0.0.1:5173/ || (test -d /Users/praspr/Documents/code_home/sb/web/dist &amp;&amp; open /Users/praspr/Documents/code_home/sb/web/dist/index.html || true)</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>8</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>KeepAlive</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>/tmp/sb-morning-open.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/sb-morning-open.err.log</string>
+</dict>
+</plist>
