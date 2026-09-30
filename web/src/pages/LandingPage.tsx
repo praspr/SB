@@ -2,8 +2,10 @@ import { CheckCircle2 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { useTodayTasks, useTodayMeetings, useTasks, useJiraTickets, useWebexAttention } from '@/lib/queries'
+import { ledgerSearch } from '@/lib/ledger'
 import { TaskList } from '@/components/tasks/TaskList'
 import { MeetingList } from '@/components/meetings/MeetingList'
+import { MorningBrief } from '@/components/landing/MorningBrief'
 import { UsageStats } from '@/components/landing/UsageStats'
 import { DashboardInsights } from '@/components/landing/DashboardInsights'
 import { ChatPanel } from '@/components/landing/ChatPanel'
@@ -20,9 +22,28 @@ export function LandingPage() {
     queryFn: () => searchSignals(),
     staleTime: 30_000,
   })
+  const ledgerDeltas = useQuery({
+    queryKey: ['landing', 'ledger-deltas'],
+    queryFn: () => ledgerSearch({ since: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), limit: 200 }),
+    staleTime: 30_000,
+  })
 
   return (
     <div className="space-y-6">
+      <MorningBrief />
+
+      <section className="rounded-xl border border-border-subtle bg-bg-panel/92 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-12 uppercase tracking-[0.18em] text-text-muted">Ledger deltas overnight</div>
+            <div className="mt-1 text-16 font-semibold text-text-primary">{ledgerDeltas.data?.length ?? 0} new ledger rows in the last 24 hours</div>
+          </div>
+          <Link to="/ledger?since=24h" className="rounded-lg border border-border-subtle bg-black/20 px-3 py-2 text-13 text-text-secondary transition hover:border-border-strong hover:text-text-primary">
+            Open ledger
+          </Link>
+        </div>
+      </section>
+
       <div>
         <h2 className="mb-2 text-xs uppercase tracking-wide text-neutral-500">Usage</h2>
         <UsageStats />
