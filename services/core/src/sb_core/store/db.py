@@ -261,6 +261,41 @@ def _m8_ledger(conn: sqlite3.Connection) -> None:
         """)
 
 
+def _m9_batch(conn: sqlite3.Connection) -> None:
+    """Muted Webex spaces, the scheduled-rituals engine, and the DB-backed
+    goals registry (phase 2a: quick wins + goals + automation)."""
+    _add_column(conn, "sb_webex_spaces", "muted", "INTEGER NOT NULL DEFAULT 0")
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS sb_scheduled_rituals (
+          id           INTEGER PRIMARY KEY AUTOINCREMENT,
+          name         TEXT NOT NULL,
+          ritual       TEXT NOT NULL,
+          args_json    TEXT NOT NULL DEFAULT '{}',
+          cron         TEXT NOT NULL,
+          target_dir   TEXT,
+          enabled      INTEGER NOT NULL DEFAULT 1,
+          last_run_at  TEXT,
+          last_status  TEXT,
+          created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+        """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS sb_goals_registry (
+          id           INTEGER PRIMARY KEY AUTOINCREMENT,
+          tier         TEXT NOT NULL,
+          title        TEXT NOT NULL,
+          description  TEXT,
+          keywords     TEXT NOT NULL DEFAULT '[]',
+          target_date  TEXT,
+          status       TEXT NOT NULL DEFAULT 'active',
+          created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at   TEXT
+        )
+        """)
+
+
 _MIGRATIONS: list[tuple[int, Callable[[sqlite3.Connection], None]]] = [
     (1, _m1_metadata),
     (2, _m2_skills),
@@ -270,6 +305,7 @@ _MIGRATIONS: list[tuple[int, Callable[[sqlite3.Connection], None]]] = [
     (6, _m6_proposals),
     (7, _m7_webex),
     (8, _m8_ledger),
+    (9, _m9_batch),
 ]
 
 _REQUIRED_COLUMNS: dict[str, dict[str, str]] = {
@@ -282,6 +318,9 @@ _REQUIRED_COLUMNS: dict[str, dict[str, str]] = {
     "sb_proposals": {
         "target_path": "TEXT",
         "updated_at": "TEXT",
+    },
+    "sb_webex_spaces": {
+        "muted": "INTEGER NOT NULL DEFAULT 0",
     },
 }
 

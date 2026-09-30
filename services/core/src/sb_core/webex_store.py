@@ -21,6 +21,12 @@ def replace_mirror(
     synced = _now()
     conn.execute("BEGIN IMMEDIATE")
     try:
+        muted_ids = {
+            row["id"]
+            for row in conn.execute(
+                "SELECT id FROM sb_webex_spaces WHERE muted = 1"
+            ).fetchall()
+        }
         conn.execute("DELETE FROM sb_webex_meetings")
         conn.execute("DELETE FROM sb_webex_spaces")
         conn.execute("DELETE FROM sb_webex_messages")
@@ -47,8 +53,8 @@ def replace_mirror(
             conn.execute(
                 """
                 INSERT INTO sb_webex_spaces
-                  (id, name, is_dm, unread_count, last_activity, members_count, synced_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                  (id, name, is_dm, unread_count, last_activity, members_count, synced_at, muted)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     space["id"],
@@ -58,6 +64,7 @@ def replace_mirror(
                     space.get("last_activity") or None,
                     int(space.get("members_count") or 0),
                     synced,
+                    1 if space["id"] in muted_ids else 0,
                 ),
             )
         for message in messages[:200]:
@@ -117,6 +124,44 @@ def list_messages(conn: sqlite3.Connection, space_id: str | None = None) -> list
             "SELECT * FROM sb_webex_messages ORDER BY occurred_at DESC"
         ).fetchall()
     return [dict(row) for row in rows]
+
+
+def set_space_muted(conn: sqlite3.Connection, space_id: str, muted: bool) -> dict:
+    """Set the muted flag on one space. Idempotent; returns the updated row,
+    or ``{"id": space_id, "muted": muted, "found": False}`` if the space is
+    not present in the local mirror (mute state still recorded for when it
+    reappears is out of scope here -- the row simply does not exist yet)."""
+    conn.execute(
+        "UPDATE sb_webex_spaces SET muted = ? WHERE id = ?",
+        (1 if muted else 0, space_id),
+    )
+    conn.commit()
+    row = conn.execute(
+        "SELECT * FROM sb_webex_spaces WHERE id = ?", (space_id,)
+    ).fetchone()
+    if row is None:
+        return {"id": space_id, "muted": muted, "found": False}
+    result = dict(row)
+    result["muted"] = bool(result["muted"])
+    result["found"] = True
+    return result
+
+
+def list_muted_space_ids(conn: sqlite3.Connection) -> set[str]:
+    rows = conn.execute("SELECT id FROM sb_webex_spaces WHERE muted = 1").fetchall()
+    return {row["id"] for row in rows}
+
+
+def list_muted_spaces(conn: sqlite3.Connection) -> list[dict]:
+    rows = conn.execute(
+        "SELECT * FROM sb_webex_spaces WHERE muted = 1 ORDER BY name"
+    ).fetchall()
+    result = []
+    for row in rows:
+        item = dict(row)
+        item["muted"] = bool(item["muted"])
+        result.append(item)
+    return result
 
 
 def _meeting(row: sqlite3.Row) -> dict:
