@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { AlertTriangle, CalendarClock, CheckCircle2, Circle, Search } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -12,8 +13,12 @@ import { QuickAddInput, type QuickAddInputHandle } from '@/components/tasks/Quic
 import type { Priority } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 import { useUiStore } from '@/lib/store'
-
-type StatusFilter = 'all' | 'open' | 'completed'
+import {
+  organizeTodos,
+  summarizeTodos,
+  type TodoSort,
+  type TodoStatusFilter,
+} from '@/lib/todo-groups'
 
 export function TodosPage() {
   const client = useQueryClient()
@@ -22,10 +27,12 @@ export function TodosPage() {
   const jiraTickets = useQuery({ queryKey: ['jira', 'tickets', 'todos-import-count'], queryFn: () => listJiraTickets({ limit: 200 }), staleTime: 30_000 })
   const [searchParams] = useSearchParams()
   const requestedStatus = searchParams.get('status')
-  const initialStatus: StatusFilter =
+  const initialStatus: TodoStatusFilter =
     requestedStatus === 'all' || requestedStatus === 'completed' ? requestedStatus : 'open'
-  const [status, setStatus] = useState<StatusFilter>(initialStatus)
+  const [status, setStatus] = useState<TodoStatusFilter>(initialStatus)
   const [priority, setPriority] = useState<Priority | 'all'>('all')
+  const [query, setQuery] = useState('')
+  const [sort, setSort] = useState<TodoSort>('priority')
   const [importOpen, setImportOpen] = useState(false)
   const [importStatuses, setImportStatuses] = useState<string[]>(['Open', 'In Progress'])
   const [importPriority, setImportPriority] = useState<'all' | 'Highest' | 'High' | 'Medium' | 'Low' | 'Lowest'>('all')
@@ -50,13 +57,18 @@ export function TodosPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusQuickAddSignal])
 
-  const filtered = useMemo(() => {
-    if (!tasks) return []
-    return tasks
-      .filter((t) => (status === 'all' ? true : status === 'open' ? !t.is_completed : t.is_completed))
-      .filter((t) => (priority === 'all' ? true : t.priority === priority))
-      .sort((a, b) => a.priority - b.priority)
-  }, [tasks, status, priority])
+  const today = useMemo(() => {
+    const now = new Date()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    return `${now.getFullYear()}-${month}-${day}`
+  }, [])
+  const summary = useMemo(() => summarizeTodos(tasks ?? [], today), [tasks, today])
+  const groups = useMemo(
+    () => organizeTodos(tasks ?? [], { status, priority, query, sort, today }),
+    [priority, query, sort, status, tasks, today],
+  )
+  const visibleCount = groups.reduce((count, group) => count + group.tasks.length, 0)
 
   const goalTitles = useMemo(() => Object.fromEntries((goals.data ?? []).map((goal) => [goal.id, goal.title])), [goals.data])
   const jiraPreview = useMemo(() => {
@@ -66,25 +78,62 @@ export function TodosPage() {
   }, [importPriority, importStatuses, jiraTickets.data])
 
   return (
-    <div className="space-y-5">
+    <div className="mx-auto max-w-6xl space-y-6">
       {toast ? <div className="rounded-md border border-success/40 bg-success/10 p-3 text-13 text-success">{toast}</div> : null}
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-20 font-semibold text-text-primary">Todos</h1>
-          <p className="mt-1 text-13 text-text-secondary">Full task list, filterable by status and priority.</p>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="min-w-[280px] flex-1">
+          <QuickAddInput ref={quickAddRef} />
         </div>
         <Button variant="secondary" onClick={() => setImportOpen(true)}>
-          Import assigned JIRAs{jiraTickets.data ? ` (${jiraTickets.data.length})` : ''}
+          Create todos from JIRA{jiraTickets.data ? ` (${jiraTickets.data.length})` : ''}
         </Button>
       </div>
 
-      <div className="max-w-lg">
-        <QuickAddInput ref={quickAddRef} />
+      <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-border-subtle bg-bg-panel/60 sm:grid-cols-4">
+        {[
+          { label: 'Overdue', value: summary.overdue, icon: AlertTriangle, tone: 'text-danger' },
+          { label: 'Due today', value: summary.today, icon: CalendarClock, tone: 'text-warning' },
+          { label: 'Open', value: summary.open, icon: Circle, tone: 'text-accent-300' },
+          { label: 'Completed', value: summary.completed, icon: CheckCircle2, tone: 'text-success' },
+        ].map((item) => (
+          <div key={item.label} className="flex items-center gap-3 border-b border-border-subtle px-4 py-3 last:border-0 sm:border-b-0 sm:border-r">
+            <item.icon size={15} className={item.tone} />
+            <div>
+              <div className="text-18 font-semibold tabular text-text-primary">{item.value}</div>
+              <div className="text-11 uppercase tracking-[0.12em] text-text-muted">{item.label}</div>
+            </div>
+          </div>
+        ))}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="space-y-3 border-b border-border-subtle pb-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex min-w-[220px] flex-1 items-center gap-2 rounded-lg border border-border-subtle bg-bg-panel px-3 py-2">
+            <Search size={14} className="text-text-muted" />
+            <input
+              aria-label="Search todos"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search todos"
+              className="w-full bg-transparent text-13 text-text-primary outline-none placeholder:text-text-muted"
+            />
+          </label>
+          <label className="flex items-center gap-2 text-12 text-text-muted">
+            Sort by
+            <select
+              value={sort}
+              onChange={(event) => setSort(event.target.value as TodoSort)}
+              className="h-9 rounded-lg border border-border-subtle bg-bg-panel px-2 text-13 text-text-secondary outline-none focus:border-accent-500"
+            >
+              <option value="priority">Priority</option>
+              <option value="due">Due date</option>
+              <option value="title">Title</option>
+            </select>
+          </label>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-1 rounded-lg border border-border-subtle bg-bg-panel p-1">
-          {(['all', 'open', 'completed'] as StatusFilter[]).map((s) => (
+          {(['all', 'open', 'completed'] as TodoStatusFilter[]).map((s) => (
             <button
               key={s}
               onClick={() => setStatus(s)}
@@ -120,20 +169,35 @@ export function TodosPage() {
             </button>
           ))}
         </div>
-        <span className="ml-auto text-13 tabular text-text-muted">{filtered.length} tasks</span>
+          <span className="ml-auto text-12 tabular text-text-muted">{visibleCount} shown</span>
+        </div>
       </div>
 
-      <TaskList
-        tasks={filtered}
-        isLoading={isLoading}
-        emptyTitle="No tasks match"
-        emptyBody="Try a different filter combination."
-        goalTitles={goalTitles}
-      />
+      <div className="space-y-6">
+        {isLoading ? (
+          <TaskList tasks={undefined} isLoading goalTitles={goalTitles} />
+        ) : groups.length === 0 ? (
+          <TaskList
+            tasks={[]}
+            emptyTitle="No tasks match"
+            emptyBody="Try a different search or filter."
+            goalTitles={goalTitles}
+          />
+        ) : groups.map((group) => (
+          <section key={group.key}>
+            <div className="mb-2 flex items-center gap-2">
+              <h2 className="text-13 font-semibold uppercase tracking-[0.12em] text-text-secondary">{group.label}</h2>
+              <span className="text-12 tabular text-text-muted">{group.tasks.length}</span>
+              <span className="h-px flex-1 bg-border-subtle" />
+            </div>
+            <TaskList tasks={group.tasks} goalTitles={goalTitles} />
+          </section>
+        ))}
+      </div>
 
       <Dialog open={importOpen} onOpenChange={setImportOpen}>
         <DialogContent>
-          <DialogTitle>Import assigned JIRAs</DialogTitle>
+          <DialogTitle>Create todos from JIRA</DialogTitle>
           <div className="mt-4 space-y-4 text-13 text-text-secondary">
             <div className="rounded-lg border border-border-subtle bg-black/20 p-3">
               <div className="text-text-primary">{jiraPreview.length} local JIRAs match the current preview.</div>

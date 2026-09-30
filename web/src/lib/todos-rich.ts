@@ -47,8 +47,11 @@ export function fetchRichTasks(): Promise<RichTask[]> {
 
 export function createRichTask(input: {
   title: string
+  description?: string
   priority: Task['priority']
   domain: Task['domain']
+  external_source?: string
+  external_ref?: string
   goal_id?: number
   jira_ref?: string
   recurrence_rule?: string

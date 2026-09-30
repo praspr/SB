@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -11,9 +11,11 @@ import type { Priority, Task } from '@/lib/mock-data'
 
 export function AddTodoDialog() {
   const open = useUiStore((s) => s.addTodoOpen)
+  const draft = useUiStore((s) => s.todoDraft)
   const setOpen = useUiStore((s) => s.setAddTodoOpen)
   const client = useQueryClient()
   const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
   const [priority, setPriority] = useState<Priority>(2)
   const [domain, setDomain] = useState<Task['domain']>('work')
   const [goalId, setGoalId] = useState('')
@@ -23,14 +25,25 @@ export function AddTodoDialog() {
   const goals = useQuery({ queryKey: ['goals-v2', 'dialog'], queryFn: async () => listGoalsV2(), staleTime: 30_000, enabled: open })
   const jiraTickets = useQuery({ queryKey: ['jira-dialog'], queryFn: () => listJiraTickets({ limit: 200 }), staleTime: 30_000, enabled: open })
 
+  useEffect(() => {
+    if (!open) return
+    setTitle(draft?.title ?? '')
+    setDescription(draft?.description ?? '')
+    setPriority(draft?.priority ?? 2)
+    setJiraRef(draft?.jira_ref ?? '')
+  }, [open, draft])
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!title.trim()) return
     const recurrence_rule = recurrencePreset === 'custom' ? customRrule.trim() || undefined : recurrencePreset || undefined
     void createRichTask({
       title: title.trim(),
+      description: description.trim() || undefined,
       priority,
       domain,
+      external_source: draft?.external_source,
+      external_ref: draft?.external_ref,
       goal_id: goalId ? Number(goalId) : undefined,
       jira_ref: jiraRef.trim() || undefined,
       recurrence_rule,
@@ -38,6 +51,7 @@ export function AddTodoDialog() {
       void client.invalidateQueries({ queryKey: ['tasks'] })
     })
     setTitle('')
+    setDescription('')
     setPriority(2)
     setDomain('work')
     setGoalId('')
@@ -59,6 +73,15 @@ export function AddTodoDialog() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="What needs to get done?"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-12 text-text-secondary">Description</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              className="w-full rounded-md border border-border-subtle bg-bg-panel px-3 py-2 text-13 text-text-primary outline-none focus:border-accent-500"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">

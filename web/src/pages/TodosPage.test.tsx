@@ -49,7 +49,7 @@ describe('todos ui', () => {
     expect(html).toContain('weekly')
   })
 
-  it('shows the jira import action in the header', () => {
+  it('shows productivity summaries, search, sorting, and the jira action', () => {
     const client = new QueryClient()
     const html = renderToStaticMarkup(
       <QueryClientProvider client={client}>
@@ -58,6 +58,10 @@ describe('todos ui', () => {
         </MemoryRouter>
       </QueryClientProvider>
     )
-    expect(html).toContain('Import assigned JIRAs')
+    expect(html).toContain('Overdue')
+    expect(html).toContain('Due today')
+    expect(html).toContain('Search todos')
+    expect(html).toContain('Sort by')
+    expect(html).toContain('Create todos from JIRA')
   })
 })
