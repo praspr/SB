@@ -13,6 +13,7 @@ from sb_core.webex_tools import summarize_webex_space, sync_webex, webex_status
 class _FakeClient:
     def __init__(self) -> None:
         self.called: list[str] = []
+        self.arguments: dict[str, dict] = {}
 
     def list_tools(self) -> list[dict]:
         return [
@@ -25,6 +26,7 @@ class _FakeClient:
 
     def call_tool(self, name: str, arguments: dict | None = None) -> dict:
         self.called.append(name)
+        self.arguments[name] = arguments or {}
         if name == "list_meetings":
             return {
                 "items": [
@@ -66,6 +68,9 @@ def test_sync_skips_write_tools(monkeypatch) -> None:
     assert result["messages"] == 1
     assert "send_message" not in fake.called
     assert "schedule_meeting" not in fake.called
+    assert "from_time" in fake.arguments["list_meetings"]
+    assert "to_time" in fake.arguments["list_meetings"]
+    assert fake.arguments["list_messages"]["room_ids"] == ["s1"]
     status = webex_status()
     assert status["meetings_count"] == 1
     assert "token" not in str(status)

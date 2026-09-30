@@ -1,25 +1,40 @@
 import { useMemo, useState } from 'react'
 import { RefreshCw, Loader2 } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
-import { useJiraTickets, useSyncJira, useJiraStatus } from '@/lib/queries'
-import { JiraFilterBar, type JiraPriorityFilter, type JiraProjectFilter, type JiraStatusFilter } from '@/components/jira/JiraFilterBar'
+import { useJiraTickets, useSyncJira, useJiraStatus, useTrackJira, useUntrackJira } from '@/lib/queries'
+import { TrackJiraForm } from '@/components/jira/TrackJiraForm'
+import { JiraFilterBar, JIRA_PROJECTS, type JiraPriorityFilter, type JiraStatusFilter } from '@/components/jira/JiraFilterBar'
 import { JiraTicketList } from '@/components/jira/JiraTicketList'
 import { Button } from '@/components/ui/button'
 
 export function JirasPage() {
   const [searchParams] = useSearchParams()
   const [status, setStatus] = useState<JiraStatusFilter>(
-    (searchParams.get('status') as JiraStatusFilter | null) ?? 'all',
+    (searchParams.get('status') as JiraStatusFilter | null) ?? 'active',
   )
   const [priority, setPriority] = useState<JiraPriorityFilter>('all')
-  const [project, setProject] = useState<JiraProjectFilter>('all')
+  const [projects, setProjects] = useState<string[]>([...JIRA_PROJECTS])
   const [q, setQ] = useState('')
   const [syncMsg, setSyncMsg] = useState<string | null>(null)
+  const [trackValue, setTrackValue] = useState('')
+  const [trackMsg, setTrackMsg] = useState<string | null>(null)
+  const [trackTone, setTrackTone] = useState<'ok' | 'error' | null>(null)
 
-  const filters = useMemo(() => ({ status, priority, project, q }), [status, priority, project, q])
+  const filters = useMemo(
+    () => ({
+      status,
+      priority,
+      projects: projects.length === JIRA_PROJECTS.length ? undefined : projects,
+      q,
+      limit: 500,
+    }),
+    [status, priority, projects, q],
+  )
   const { data: tickets, isLoading, isError, error } = useJiraTickets(filters)
   const { data: svcStatus } = useJiraStatus()
   const syncMutation = useSyncJira()
+  const trackMutation = useTrackJira()
+  const untrackMutation = useUntrackJira()
 
   async function handleRefresh() {
     setSyncMsg(null)
@@ -32,6 +47,25 @@ export function JirasPage() {
       }
     } catch (e) {
       setSyncMsg(`✗ ${(e as Error).message}`)
+    }
+  }
+
+  async function handleTrack() {
+    setTrackMsg(null)
+    setTrackTone(null)
+    try {
+      const result = await trackMutation.mutateAsync(trackValue)
+      if (result.errors.length > 0 || !result.tracked) {
+        setTrackTone('error')
+        setTrackMsg(result.errors[0] ?? 'Could not track that JIRA')
+        return
+      }
+      setTrackTone('ok')
+      setTrackMsg(`Tracking ${result.key}`)
+      setTrackValue('')
+    } catch (err) {
+      setTrackTone('error')
+      setTrackMsg((err as Error).message)
     }
   }
 
@@ -58,13 +92,22 @@ export function JirasPage() {
         </div>
       </div>
 
+      <TrackJiraForm
+        value={trackValue}
+        pending={trackMutation.isPending}
+        message={trackMsg}
+        tone={trackTone}
+        onChange={setTrackValue}
+        onSubmit={handleTrack}
+      />
+
       <JiraFilterBar
         status={status}
         onStatusChange={setStatus}
         priority={priority}
         onPriorityChange={setPriority}
-        project={project}
-        onProjectChange={setProject}
+        projects={projects}
+        onProjectsChange={setProjects}
         onSearchChange={setQ}
       />
 
@@ -74,10 +117,20 @@ export function JirasPage() {
         </div>
       )}
 
-      <JiraTicketList tickets={tickets} isLoading={isLoading} />
+      <JiraTicketList
+        tickets={tickets}
+        isLoading={isLoading}
+        onUntrack={(key) => {
+          void untrackMutation.mutateAsync(key).then(() => {
+            setTrackTone('ok')
+            setTrackMsg(`Stopped tracking ${key}; its local mirror was kept`)
+          })
+        }}
+      />
 
       <p className="text-12 text-text-muted">
-        Same tickets as ciq/docs/jira/README.md · showing {tickets?.length ?? 0}
+        Same tickets as ciq/docs/jira/README.md
+        {status === 'active' ? ' · closed tickets hidden' : ''} · showing {tickets?.length ?? 0}
         {svcStatus?.tickets_count != null ? ` of ${svcStatus.tickets_count}` : ''} · pull-only Atlassian sync
       </p>
     </div>

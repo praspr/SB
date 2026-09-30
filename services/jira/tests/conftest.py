@@ -35,8 +35,10 @@ def _isolate_settings(tmp_path, monkeypatch):
 
     readme = tmp_path / "README.md"
     history = tmp_path / "tickethistory.md"
+    tracked = tmp_path / "tracked.json"
 
     monkeypatch.setattr(settings, "tickets_dir", tickets_dir)
     monkeypatch.setattr(settings, "readme_path", readme)
     monkeypatch.setattr(settings, "tickethistory_path", history)
+    monkeypatch.setattr(settings, "tracked_path", tracked)
     yield settings

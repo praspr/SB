@@ -325,24 +325,32 @@ export function summarizeWebexSpace(spaceId: string): Promise<WebexSummary> {
 // ---- JIRA (pull-only tools on the unified sb MCP) ----
 
 export async function listJiraTickets(filters?: {
-  status?: JiraStatus | 'all'
+  status?: JiraStatus | 'all' | 'active'
   priority?: JiraPriority | 'all'
   project?: string | 'all'
+  projects?: string[]
   q?: string
+  limit?: number
 }): Promise<JiraTicket[]> {
+  const specificStatus = filters?.status && filters.status !== 'all' && filters.status !== 'active'
   return callTool<JiraTicket[]>('list_jira_tickets', {
-    ...(filters?.status && filters.status !== 'all' ? { status: filters.status } : {}),
+    ...(specificStatus ? { status: filters.status } : {}),
+    ...(filters?.status === 'active' ? { hide_closed: true } : {}),
     ...(filters?.priority && filters.priority !== 'all' ? { priority: filters.priority } : {}),
     ...(filters?.project && filters.project !== 'all' ? { project: filters.project } : {}),
+    ...(filters?.projects ? { projects: filters.projects } : {}),
     ...(filters?.q ? { q: filters.q } : {}),
+    ...(filters?.limit ? { limit: filters.limit } : {}),
   })
 }
 
 export function useJiraTickets(filters?: {
-  status?: JiraStatus | 'all'
+  status?: JiraStatus | 'all' | 'active'
   priority?: JiraPriority | 'all'
   project?: string | 'all'
+  projects?: string[]
   q?: string
+  limit?: number
 }) {
   return useQuery({
     queryKey: ['jira', 'tickets', filters],
@@ -375,11 +383,46 @@ export function useSyncJira() {
   })
 }
 
+export type TrackJiraResult = {
+  key: string | null
+  tracked: boolean
+  errors: string[]
+}
+
+export function trackJira(issue: string): Promise<TrackJiraResult> {
+  return callTool<TrackJiraResult>('track_jira', { issue })
+}
+
+export function useTrackJira() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: trackJira,
+    onSuccess: (result) => {
+      if (result.tracked) queryClient.invalidateQueries({ queryKey: ['jira'] })
+    },
+  })
+}
+
+export function untrackJira(key: string): Promise<TrackJiraResult> {
+  return callTool<TrackJiraResult>('untrack_jira', { key })
+}
+
+export function useUntrackJira() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: untrackJira,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jira'] })
+    },
+  })
+}
+
 export type JiraServiceStatus = {
   last_sync_at: string | null
   atlassian_reachable: boolean
   atlassian_error: string | null
   tickets_count: number
+  tracked_count?: number
 }
 
 export function fetchJiraStatus(): Promise<JiraServiceStatus> {

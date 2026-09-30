@@ -8,11 +8,13 @@ export function JiraTicketList({
   isLoading,
   emptyTitle = 'No tickets match',
   emptyBody = 'Try a different filter combination.',
+  onUntrack,
 }: {
   tickets: JiraTicket[] | undefined
   isLoading?: boolean
   emptyTitle?: string
   emptyBody?: string
+  onUntrack?: (key: string) => void
 }) {
   if (isLoading) return <SkeletonRow lines={5} />
   if (!tickets || tickets.length === 0) {
@@ -22,7 +24,7 @@ export function JiraTicketList({
   return (
     <div className="space-y-2">
       {tickets.map((ticket) => (
-        <JiraTicketRow key={ticket.key} ticket={ticket} />
+        <JiraTicketRow key={ticket.key} ticket={ticket} onUntrack={onUntrack} />
       ))}
     </div>
   )

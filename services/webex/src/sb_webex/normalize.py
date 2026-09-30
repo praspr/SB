@@ -114,13 +114,31 @@ def spaces(payload: Any) -> list[dict]:
     return rows
 
 
+def _message_items(payload: Any) -> list[dict]:
+    """Accept a flat list or a map of room id to ``{messages: [...]}``."""
+    if isinstance(payload, dict):
+        grouped: list[dict] = []
+        for room_id, body in payload.items():
+            if not isinstance(body, dict) or not isinstance(body.get("messages"), list):
+                continue
+            for item in body["messages"]:
+                if not isinstance(item, dict):
+                    continue
+                row = dict(item)
+                row.setdefault("roomId", room_id)
+                grouped.append(row)
+        if grouped:
+            return grouped
+    return _items(payload)
+
+
 def messages(payload: Any, *, space_name: str = "") -> list[dict]:
     rows = []
-    for item in _items(payload):
+    for item in _message_items(payload):
         message_id = _first(item, "id", "messageId")
         if not message_id:
             continue
-        text = _first(item, "text", "preview", "markdown")
+        text = _first(item, "text", "preview", "markdown", "content")
         mentions = item.get("mentionedPeople") or item.get("mentions") or []
         rows.append(
             {
@@ -130,7 +148,11 @@ def messages(payload: Any, *, space_name: str = "") -> list[dict]:
                     item, "roomTitle", "space", default=space_name or "Space"
                 ),
                 "sender_name": _first(
-                    item, "personDisplayName", "sender_name", default="Someone"
+                    item,
+                    "personDisplayName",
+                    "sender_name",
+                    "personEmail",
+                    default="Someone",
                 ),
                 "sender_email": _first(item, "personEmail", "sender_email"),
                 "is_dm": _first(item, "roomType").lower() == "direct"

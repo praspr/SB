@@ -4,11 +4,12 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import type { JiraPriority, JiraStatus } from '@/lib/mock-data'
 
-export type JiraStatusFilter = JiraStatus | 'all'
+export type JiraStatusFilter = JiraStatus | 'all' | 'active'
 export type JiraPriorityFilter = JiraPriority | 'all'
-export type JiraProjectFilter = string | 'all'
+export const JIRA_PROJECTS = ['CXP', 'CXPL', 'FSRE'] as const
 
 const statusOptions: { value: JiraStatusFilter; label: string }[] = [
+  { value: 'active', label: 'Active' },
   { value: 'all', label: 'All statuses' },
   { value: 'Open', label: 'Open' },
   { value: 'In Progress', label: 'In Progress' },
@@ -34,12 +35,6 @@ const priorityOptions: { value: JiraPriorityFilter; label: string }[] = [
   { value: 'Lowest', label: 'Lowest' },
 ]
 
-const projectOptions: { value: JiraProjectFilter; label: string }[] = [
-  { value: 'all', label: 'All projects' },
-  { value: 'CXP', label: 'CXP' },
-  { value: 'CXPL', label: 'CXPL' },
-]
-
 const selectClasses =
   'h-9 rounded-md border border-border-subtle bg-bg-panel px-2.5 text-13 text-text-primary outline-none transition-colors duration-fast ease-out focus:border-accent-500 focus:ring-1 focus:ring-accent-500'
 
@@ -48,16 +43,16 @@ export function JiraFilterBar({
   onStatusChange,
   priority,
   onPriorityChange,
-  project,
-  onProjectChange,
+  projects,
+  onProjectsChange,
   onSearchChange,
 }: {
   status: JiraStatusFilter
   onStatusChange: (v: JiraStatusFilter) => void
   priority: JiraPriorityFilter
   onPriorityChange: (v: JiraPriorityFilter) => void
-  project: JiraProjectFilter
-  onProjectChange: (v: JiraProjectFilter) => void
+  projects: string[]
+  onProjectsChange: (v: string[]) => void
   onSearchChange: (v: string) => void
 }) {
   const [q, setQ] = useState('')
@@ -104,17 +99,24 @@ export function JiraFilterBar({
         ))}
       </select>
 
-      <select
-        value={project}
-        onChange={(e) => onProjectChange(e.target.value as JiraProjectFilter)}
-        className={selectClasses}
-      >
-        {projectOptions.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
+      <fieldset className="flex h-9 items-center gap-3 rounded-md border border-border-subtle bg-bg-panel px-2.5">
+        <legend className="sr-only">Projects</legend>
+        {JIRA_PROJECTS.map((name) => (
+          <label key={name} className="flex items-center gap-1.5 text-13 text-text-primary">
+            <input
+              type="checkbox"
+              checked={projects.includes(name)}
+              onChange={() => {
+                const next = projects.includes(name)
+                  ? projects.filter((item) => item !== name)
+                  : [...projects, name]
+                onProjectsChange(next)
+              }}
+            />
+            {name}
+          </label>
         ))}
-      </select>
+      </fieldset>
     </div>
   )
 }

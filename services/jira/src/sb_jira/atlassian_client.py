@@ -158,6 +158,27 @@ def _issue_to_detail(issue: dict[str, Any]) -> JiraTicketDetail:
     )
 
 
+def fetch_issue(key: str, timeout: float = 15.0) -> JiraTicketDetail:
+    """Fetch one issue by key. Read-only."""
+    token = get_token()
+    if not token:
+        raise AtlassianAuthError("No Atlassian token configured")
+    headers = _auth_header(settings.atlassian_email, token)
+    url = f"{settings.atlassian_site}/rest/api/3/issue/{key}"
+    params = {"fields": [name.strip() for name in FIELDS.split(",") if name.strip()]}
+    with httpx.Client(timeout=timeout) as client:
+        resp = client.get(url, headers=headers, params=params)
+    if resp.status_code == 401:
+        raise AtlassianAuthError("Atlassian authentication failed (401)")
+    if resp.status_code == 404:
+        raise AtlassianClientError(f"JIRA {key} was not found (404)")
+    if resp.status_code != 200:
+        raise AtlassianClientError(
+            f"Atlassian issue fetch failed: HTTP {resp.status_code} {resp.text[:300]}"
+        )
+    return _issue_to_detail(resp.json())
+
+
 def fetch_all_assigned(timeout: float = 15.0) -> list[JiraTicketDetail]:
     """Fetch tickets matching `settings.atlassian_jql` via the enhanced JQL search.
 

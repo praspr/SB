@@ -1,13 +1,20 @@
 import asyncio
 from unittest.mock import patch
 
-from sb_jira import file_store, mcp_tools
+from sb_jira import file_store, mcp_tools, tracking
 
 
 def test_all_four_tools_registered():
     tools = asyncio.run(mcp_tools.mcp.list_tools())
     names = {t.name for t in tools}
-    assert names == {"list_jira_tickets", "get_jira_ticket", "sync_jira", "jira_status"}
+    assert names == {
+        "list_jira_tickets",
+        "get_jira_ticket",
+        "sync_jira",
+        "jira_status",
+        "track_jira",
+        "untrack_jira",
+    }
 
 
 def test_list_jira_tickets_matches_file_store():
@@ -16,6 +23,15 @@ def test_list_jira_tickets_matches_file_store():
     result_keys = {t["key"] for t in result}
     assert result_keys == expected_keys
     assert len(result) == 2  # CXP-46855, CXP-40585 fixtures
+
+
+def test_list_marks_locally_tracked_tickets():
+    from sb_jira.config import settings
+
+    tracking.add_key("CXP-46855", settings.tracked_path)
+    by_key = {row["key"]: row for row in mcp_tools.list_jira_tickets()}
+    assert by_key["CXP-46855"]["tracked"] is True
+    assert by_key["CXP-40585"]["tracked"] is False
 
 
 def test_list_jira_tickets_filters_by_status():
@@ -28,6 +44,35 @@ def test_list_jira_tickets_filters_by_q():
     result = mcp_tools.list_jira_tickets(q="notification")
     keys = {t["key"] for t in result}
     assert keys == {"CXP-46855"}
+
+
+def test_hide_closed_and_project_list():
+    from sb_jira.models import JiraTicket, Person
+
+    def ticket(key: str, status: str) -> JiraTicket:
+        return JiraTicket(
+            key=key,
+            project=key.split("-")[0],
+            title=key,
+            status=status,
+            priority="Medium",
+            issue_type="Task",
+            assignee=Person(name="Ada", email="ada@example.com"),
+            created="2026-09-01",
+            updated="2026-09-30",
+            url=f"https://cisco-cxe.atlassian.net/browse/{key}",
+        )
+
+    rows = [
+        ticket("CXP-1", "Open"),
+        ticket("CXPL-2", "Closed"),
+        ticket("FSRE-3", "Done"),
+        ticket("FSRE-4", "In Progress"),
+    ]
+    hidden = file_store.apply_filters(rows, hide_closed=True)
+    assert [item.key for item in hidden] == ["CXP-1", "FSRE-4"]
+    selected = file_store.apply_filters(rows, projects=["FSRE", "CXPL"])
+    assert [item.key for item in selected] == ["CXPL-2", "FSRE-3", "FSRE-4"]
 
 
 def test_list_jira_tickets_respects_limit():
@@ -74,6 +119,7 @@ def test_jira_status_shape():
         "atlassian_reachable",
         "atlassian_error",
         "tickets_count",
+        "tracked_count",
         "last_sync_at",
     }
     assert result["tickets_count"] == 2

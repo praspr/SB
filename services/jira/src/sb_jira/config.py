@@ -14,14 +14,15 @@ class Settings(BaseSettings):
     code_home: Path = Path("/Users/praspr/Documents/code_home")
 
     # Local mirror
-    tickets_dir: Path = Path(
-        "/Users/praspr/Documents/code_home/ciq/docs/jira/tickets"
-    )
+    tickets_dir: Path = Path("/Users/praspr/Documents/code_home/ciq/docs/jira/tickets")
     readme_path: Path = Path(
         "/Users/praspr/Documents/code_home/ciq/docs/jira/README.md"
     )
     tickethistory_path: Path = Path(
         "/Users/praspr/Documents/code_home/ciq/docs/jira/tickethistory.md"
+    )
+    tracked_path: Path = Path(
+        "/Users/praspr/Documents/code_home/ciq/docs/jira/tracked.json"
     )
 
     # Atlassian

@@ -2,6 +2,8 @@ import { formatDistanceToNow } from 'date-fns'
 import type { JiraTicket } from '@/lib/mock-data'
 import { priorityColor, statusColorClasses } from '@/lib/jira-utils'
 import { cn } from '@/lib/utils'
+import { useUiStore } from '@/lib/store'
+import { Button } from '@/components/ui/button'
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/)
@@ -9,7 +11,14 @@ function initials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
-export function JiraTicketRow({ ticket }: { ticket: JiraTicket }) {
+export function JiraTicketRow({
+  ticket,
+  onUntrack,
+}: {
+  ticket: JiraTicket
+  onUntrack?: (key: string) => void
+}) {
+  const openAddTodo = useUiStore((state) => state.openAddTodo)
   function handleClick() {
     window.open(ticket.url, '_blank', 'noopener,noreferrer')
   }
@@ -60,6 +69,33 @@ export function JiraTicketRow({ ticket }: { ticket: JiraTicket }) {
       <span className="w-20 shrink-0 text-right text-12 tabular text-text-muted">
         {formatDistanceToNow(new Date(ticket.updated), { addSuffix: true })}
       </span>
+      <Button
+        variant="ghost"
+        onClick={(event) => {
+          event.stopPropagation()
+          openAddTodo({
+            title: `Review ${ticket.key}: ${ticket.title}`,
+            description: `${ticket.description || ticket.title}\n\n[JIRA:${ticket.key}]`,
+            priority: ticket.priority === 'Highest' ? 1 : ticket.priority === 'High' ? 2 : 3,
+            external_source: 'jira',
+            external_ref: ticket.key,
+            jira_ref: ticket.key,
+          })
+        }}
+      >
+        Create todo
+      </Button>
+      {ticket.tracked && onUntrack ? (
+        <Button
+          variant="ghost"
+          onClick={(event) => {
+            event.stopPropagation()
+            onUntrack(ticket.key)
+          }}
+        >
+          Untrack
+        </Button>
+      ) : null}
     </div>
   )
 }

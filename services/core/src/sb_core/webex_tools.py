@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime, timedelta
 
 from fastmcp import FastMCP
 
@@ -36,29 +37,64 @@ def _conn():
     return connect(settings.db_path)
 
 
-def _pull(client: McpClient) -> dict[str, int]:
-    catalog = readable_tools(client.list_tools())
-    meeting_rows = (
-        meetings(client.call_tool(catalog["meeting"])) if "meeting" in catalog else []
+def _meeting_window() -> tuple[str, str]:
+    """Local calendar today through the next 7 days, with a timezone offset."""
+    start = (
+        datetime.now().astimezone().replace(hour=0, minute=0, second=0, microsecond=0)
     )
+    end = start + timedelta(days=7)
+    return start.isoformat(timespec="seconds"), end.isoformat(timespec="seconds")
+
+
+def _tool_error(payload: object) -> str | None:
+    if not isinstance(payload, dict):
+        return None
+    code = payload.get("status_code")
+    if isinstance(code, int) and code >= 400:
+        detail = payload.get("message") or payload.get("error") or ""
+        return f"Webex tool returned status {code} {detail}".strip()
+    return None
+
+
+def _pull(client: McpClient) -> dict:
+    catalog = readable_tools(client.list_tools())
+    errors: list[str] = []
+    meeting_rows: list[dict] = []
+    if "meeting" in catalog:
+        from_time, to_time = _meeting_window()
+        payload = client.call_tool(
+            catalog["meeting"],
+            {"from_time": from_time, "to_time": to_time, "max": 100},
+        )
+        error = _tool_error(payload)
+        if error:
+            errors.append(error)
+        meeting_rows = meetings(payload)
     space_rows = (
         spaces(client.call_tool(catalog["space"])) if "space" in catalog else []
     )
     message_rows: list[dict] = []
-    if "message" in catalog:
-        if space_rows:
-            for space in space_rows[:15]:
-                payload = client.call_tool(catalog["message"], {"roomId": space["id"]})
-                message_rows.extend(messages(payload, space_name=space["name"]))
-        else:
-            message_rows.extend(messages(client.call_tool(catalog["message"])))
+    if "message" in catalog and space_rows:
+        room_ids = [space["id"] for space in space_rows[:15]]
+        payload = client.call_tool(
+            catalog["message"],
+            {"room_ids": room_ids, "max": 20},
+        )
+        error = _tool_error(payload)
+        if error:
+            errors.append(error)
+        message_rows = messages(payload)
+        names = {space["id"]: space["name"] for space in space_rows}
+        for row in message_rows:
+            row["space_name"] = names.get(row.get("space_id") or "", row["space_name"])
     conn = _conn()
     try:
-        return replace_mirror(
+        counts = replace_mirror(
             conn, meetings=meeting_rows, spaces=space_rows, messages=message_rows
         )
     finally:
         conn.close()
+    return {**counts, "errors": errors}
 
 
 @mcp.tool()
@@ -103,10 +139,9 @@ def sync_webex() -> dict:
             "errors": ["Webex is not signed in. Open /webex/login."],
         }
     try:
-        counts = _pull(McpClient(token))
+        return _pull(McpClient(token))
     except WebexAuthError as exc:
         return {"meetings": 0, "spaces": 0, "messages": 0, "errors": [str(exc)]}
-    return {**counts, "errors": []}
 
 
 @mcp.tool()

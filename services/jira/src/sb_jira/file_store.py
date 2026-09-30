@@ -302,12 +302,17 @@ def load_by_key(key: str, tickets_dir: Path | None = None) -> JiraTicketDetail |
         return None
 
 
+CLOSED_STATUSES = frozenset({"Closed", "Done", "Resolved", "Cancelled"})
+
+
 def apply_filters(
     tickets: list[JiraTicket],
     status: str | None = None,
     priority: str | None = None,
     project: str | None = None,
+    projects: list[str] | None = None,
     q: str | None = None,
+    hide_closed: bool = False,
 ) -> list[JiraTicket]:
     """Shared filter logic used by both the REST `/api/jira/tickets` endpoint
     and the `list_jira_tickets` MCP tool, so results stay identical.
@@ -319,6 +324,11 @@ def apply_filters(
         result = [t for t in result if t.priority == priority]
     if project:
         result = [t for t in result if t.project == project]
+    if projects:
+        allowed = set(projects)
+        result = [t for t in result if t.project in allowed]
+    if hide_closed and not status:
+        result = [t for t in result if t.status not in CLOSED_STATUSES]
     if q:
         needle = q.lower()
         result = [t for t in result if needle in f"{t.key} {t.title}".lower()]

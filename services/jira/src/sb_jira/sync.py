@@ -11,7 +11,7 @@ import os
 import time
 from pathlib import Path
 
-from . import atlassian_client, file_store, format, history
+from . import atlassian_client, file_store, format, history, tracking
 from .config import settings
 from .models import JiraTicketDetail, RefreshResult
 
@@ -74,6 +74,16 @@ def run_sync(tickets_dir: Path | None = None) -> RefreshResult:
         )
 
     remote = {t.key: t for t in remote_list}
+    for key in tracking.load_keys():
+        if key in remote:
+            continue
+        try:
+            remote[key] = atlassian_client.fetch_issue(key)
+        except (
+            atlassian_client.AtlassianAuthError,
+            atlassian_client.AtlassianClientError,
+        ) as exc:
+            errors.append(f"{key}: {exc}")
 
     updated_count = 0
     added_count = 0
