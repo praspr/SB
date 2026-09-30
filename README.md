@@ -68,6 +68,12 @@ mounted in-process under their original names (`todo_list`, `todo_add`,
 only pull Atlassian into local markdown. The dashboard calls both through
 `/proxy/mcp`. `GET /health` does not contact Atlassian.
 
+`sync_skills` indexes `*/SKILL.md` from `<repo>/harness/skills`,
+`<repo>/.cursor/skills`, `~/.cursor/skills`, `~/.claude/skills`, and any extra
+directories in `SB_CORE_EXTRA_SKILL_ROOTS`. It does not scan the rest of the
+home directory. Content identity uses SHA-256. The dashboard lists skills at
+`/skills`.
+
 ```bash
 cd sb/services/core
 uv sync --group dev

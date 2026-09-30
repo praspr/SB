@@ -46,7 +46,7 @@ def test_database_is_ready_and_migrations_are_idempotent(tmp_path: Path) -> None
             "SELECT version FROM core_schema_migrations ORDER BY version"
         ).fetchall()
     ]
-    assert versions == [1]
+    assert versions == [1, 2]
     tables = {
         row[0]
         for row in conn.execute(
@@ -54,14 +54,9 @@ def test_database_is_ready_and_migrations_are_idempotent(tmp_path: Path) -> None
         ).fetchall()
     }
     assert "sb_meta" in tables
+    assert "sb_skills" in tables
     assert "core_schema_migrations" in tables
-    for later in (
-        "sb_signals",
-        "sb_daily",
-        "sb_proposals",
-        "sb_skills",
-        "sb_sync_state",
-    ):
+    for later in ("sb_signals", "sb_daily", "sb_proposals", "sb_sync_state"):
         assert later not in tables
     conn.close()
 
@@ -91,33 +86,33 @@ def test_migrations_are_concurrency_safe(tmp_path: Path) -> None:
             "SELECT version FROM core_schema_migrations ORDER BY version"
         ).fetchall()
     ]
-    assert versions == [1]
+    assert versions == [1, 2]
     conn.close()
 
 
 def test_system_status_reports_readiness() -> None:
-    async def inspect() -> set[str]:
+    async def inspect() -> tuple[set[str], int, int]:
         tools = await mcp.list_tools()
         prompts = await mcp.list_prompts()
         resources = await mcp.list_resources()
         names = {tool.name for tool in tools}
 
         assert "system_status" in names
-        assert prompts == []
-        assert resources == []
-        return names
+        assert all(prompt.name.startswith("skill_") for prompt in prompts)
+        assert all(str(resource.uri).startswith("skill://") for resource in resources)
+        return names, len(prompts), len(resources)
 
-    names = asyncio.run(inspect())
+    names, prompt_count, resource_count = asyncio.run(inspect())
 
     status = asyncio.run(system_status())
     assert status["status"] == "ok"
     assert status["version"] == __version__
     assert status["database"]["ready"] is True
-    assert status["database"]["schema_version"] == 1
+    assert status["database"]["schema_version"] == 2
     assert status["database"]["path"] == "core.db"
     assert status["counts"]["tools"] == len(names)
-    assert status["counts"]["prompts"] == 0
-    assert status["counts"]["resources"] == 0
+    assert status["counts"]["prompts"] == prompt_count
+    assert status["counts"]["resources"] == resource_count
     assert str(Path.home()) not in json.dumps(status)
 
 
@@ -147,7 +142,7 @@ def test_health_mcp_initialize_and_api_absence() -> None:
     assert health.status_code == 200
     body = health.json()
     assert body["database"]["ready"] is True
-    assert body["database"]["schema_version"] == 1
+    assert body["database"]["schema_version"] == 2
     assert "token" not in health.text.lower()
     assert "password" not in health.text.lower()
     assert str(Path.home()) not in health.text

@@ -8,7 +8,14 @@ from . import __version__
 from .config import settings
 from .store.db import connect, schema_version
 
-mcp = FastMCP("sb")
+mcp = FastMCP(
+    "sb",
+    instructions=(
+        "Before using a skill's listed tools, discover that skill with list_skills "
+        "or get_skill and follow its procedure. Do not invent tools that the skill "
+        "does not list."
+    ),
+)
 
 
 def _mount_domains() -> None:
@@ -18,6 +25,9 @@ def _mount_domains() -> None:
 
     mcp.mount(todos_mcp)
     mcp.mount(jira_mcp)
+    from .skills import register_skill_tools
+
+    register_skill_tools(mcp)
 
 
 _mount_domains()

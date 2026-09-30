@@ -47,8 +47,28 @@ def _m1_metadata(conn: sqlite3.Connection) -> None:
     )
 
 
+def _m2_skills(conn: sqlite3.Connection) -> None:
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS sb_skills (
+          id              TEXT PRIMARY KEY,
+          name            TEXT NOT NULL,
+          description     TEXT NOT NULL DEFAULT '',
+          source          TEXT NOT NULL,
+          path            TEXT NOT NULL,
+          content_sha256  TEXT NOT NULL DEFAULT '',
+          modified_at     TEXT,
+          synced_at       TEXT NOT NULL,
+          enabled         INTEGER NOT NULL DEFAULT 1,
+          available       INTEGER NOT NULL DEFAULT 1,
+          allowed_tools   TEXT NOT NULL DEFAULT '[]',
+          procedure       TEXT NOT NULL DEFAULT ''
+        )
+        """)
+
+
 _MIGRATIONS: list[tuple[int, Callable[[sqlite3.Connection], None]]] = [
     (1, _m1_metadata),
+    (2, _m2_skills),
 ]
 
 # Tables whose required columns are re-verified on every connect. Empty until

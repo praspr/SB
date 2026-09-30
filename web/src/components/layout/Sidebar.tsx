@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router-dom'
-import { Home, ListTodo, Calendar, MessageSquare, Ticket, Activity, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Home, ListTodo, Calendar, MessageSquare, Ticket, Activity, Library, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useUiStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
 const navItems = [
   { to: '/', label: 'Landing', icon: Home, end: true },
   { to: '/status', label: 'Status', icon: Activity, end: false },
+  { to: '/skills', label: 'Skills', icon: Library, end: false },
   { to: '/todos', label: 'Todos', icon: ListTodo, end: false },
   { to: '/jira', label: 'JIRAs', icon: Ticket, end: false },
   { to: '/meetings', label: 'Meetings', icon: Calendar, end: false },

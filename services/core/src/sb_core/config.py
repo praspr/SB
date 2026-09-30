@@ -110,6 +110,7 @@ class Settings(BaseSettings):
     host: str = "127.0.0.1"
     port: int = 8787
     skills_root: Path | None = None
+    extra_skill_roots: list[str] = []
 
     # Core SQLite store path
     db_path: Path = Path("~/.local/share/sb/core.db")
@@ -166,7 +167,7 @@ class Settings(BaseSettings):
 
     # ---- List-field validators: accept JSON arrays OR space-separated values ----
 
-    @field_validator("roots", "git_authors", mode="before")
+    @field_validator("roots", "git_authors", "extra_skill_roots", mode="before")
     @classmethod
     def _coerce_list(cls, v: Any) -> Any:  # noqa: N805
         """Accept JSON-encoded lists, space-separated strings from env, or YAML lists.
