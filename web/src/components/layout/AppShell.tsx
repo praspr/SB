@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useOutlet } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
@@ -18,6 +18,7 @@ const titles: Record<string, { title: string; subtitle?: string }> = {
 export function AppShell() {
   const location = useLocation()
   const navigate = useNavigate()
+  const outlet = useOutlet()
   const setSidebarCollapsed = useUiStore((s) => s.setSidebarCollapsed)
   const setCommandPaletteOpen = useUiStore((s) => s.setCommandPaletteOpen)
   const triggerFocusQuickAdd = useUiStore((s) => s.triggerFocusQuickAdd)
@@ -64,7 +65,7 @@ export function AppShell() {
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
             >
-              <Outlet />
+              {outlet}
             </motion.div>
           </AnimatePresence>
         </div>
