@@ -177,6 +177,90 @@ def _m7_webex(conn: sqlite3.Connection) -> None:
         """)
 
 
+def _m8_ledger(conn: sqlite3.Connection) -> None:
+    """Append-only narrative ledger, session cache, and project registry."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS sb_ledger (
+          id             INTEGER PRIMARY KEY AUTOINCREMENT,
+          ts             TEXT    NOT NULL,
+          session_id     TEXT    NOT NULL,
+          project        TEXT    NOT NULL,
+          scope          TEXT,
+          action_verb    TEXT    NOT NULL,
+          summary        TEXT    NOT NULL,
+          body           TEXT,
+          refs           TEXT    NOT NULL DEFAULT '[]',
+          source_harness TEXT    NOT NULL,
+          agent_model    TEXT,
+          working_dir    TEXT,
+          origin         TEXT    NOT NULL,
+          redaction_applied       INTEGER NOT NULL DEFAULT 0,
+          redaction_rules_version INTEGER NOT NULL DEFAULT 0,
+          content_sha256 TEXT    NOT NULL,
+          created_at     TEXT    NOT NULL DEFAULT (datetime('now'))
+        )
+        """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_ledger_ts ON sb_ledger(ts DESC)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_ledger_project ON sb_ledger(project, ts DESC)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_ledger_session ON sb_ledger(session_id, ts)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_ledger_verb ON sb_ledger(action_verb, ts DESC)"
+    )
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_ledger_dedup ON sb_ledger(content_sha256)"
+    )
+
+    conn.execute("""
+        CREATE VIRTUAL TABLE IF NOT EXISTS sb_ledger_fts USING fts5(
+          summary, body, project, scope, action_verb, refs,
+          content='sb_ledger', content_rowid='id', tokenize='porter'
+        )
+        """)
+
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS sb_ledger_ai AFTER INSERT ON sb_ledger BEGIN
+          INSERT INTO sb_ledger_fts(rowid, summary, body, project, scope, action_verb, refs)
+          VALUES (new.id, new.summary, new.body, new.project, new.scope, new.action_verb, new.refs);
+        END
+        """)
+
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS sb_ledger_no_update BEFORE UPDATE ON sb_ledger
+          BEGIN SELECT RAISE(ABORT, 'sb_ledger is append-only'); END
+        """)
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS sb_ledger_no_delete BEFORE DELETE ON sb_ledger
+          BEGIN SELECT RAISE(ABORT, 'sb_ledger is append-only'); END
+        """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS sb_ledger_sessions (
+          session_id   TEXT PRIMARY KEY,
+          started_at   TEXT NOT NULL,
+          agent        TEXT,
+          working_dir  TEXT,
+          project      TEXT,
+          extras       TEXT NOT NULL DEFAULT '{}'
+        )
+        """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS sb_project_registry (
+          project        TEXT PRIMARY KEY,
+          root_path      TEXT NOT NULL,
+          changelog_path TEXT NOT NULL,
+          sync_mode      TEXT NOT NULL DEFAULT 'dual',
+          added_at       TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+        """)
+
+
 _MIGRATIONS: list[tuple[int, Callable[[sqlite3.Connection], None]]] = [
     (1, _m1_metadata),
     (2, _m2_skills),
@@ -185,6 +269,7 @@ _MIGRATIONS: list[tuple[int, Callable[[sqlite3.Connection], None]]] = [
     (5, _m5_daily),
     (6, _m6_proposals),
     (7, _m7_webex),
+    (8, _m8_ledger),
 ]
 
 _REQUIRED_COLUMNS: dict[str, dict[str, str]] = {
