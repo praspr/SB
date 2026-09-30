@@ -26,6 +26,7 @@ def _mount_domains() -> None:
     mcp.mount(todos_mcp)
     mcp.mount(jira_mcp)
     from .chat_tools import mcp as chat_mcp
+    from .goals_tools import mcp as goals_mcp
     from .ledger_tools import mcp as ledger_mcp
     from .reports_tools import mcp as reports_mcp
     from .skills import register_skill_tools
@@ -44,6 +45,7 @@ def _mount_domains() -> None:
     mcp.mount(triage_mcp)
     mcp.mount(ledger_mcp)
     mcp.mount(reports_mcp)
+    mcp.mount(goals_mcp)
 
     _seed_ledger_registry()
 
