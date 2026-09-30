@@ -180,6 +180,60 @@ def sync_webex() -> dict:
 
 
 @mcp.tool()
+def webex_rethread(limit: int = 500) -> dict:
+    """Manual backfill: fill parent_sender_email/is_reply_to_me for older
+    mirrored messages that have a parent_message_id but were never enriched.
+
+    ``sync_webex`` only enriches newly-pulled messages (see locked design
+    decision 5) to avoid ballooning a sync with parent lookups. This tool is
+    a deliberate, manually-triggered repair path over the existing mirror --
+    it is never auto-run. Read-only against Webex (GET only); the only
+    writes are to the local mirror's thread columns.
+    """
+    token = access_token()
+    if not token:
+        return {"updated": 0, "checked": 0, "errors": ["Webex is not signed in. Open /webex/login."]}
+
+    client = McpClient(token)
+    conn = _conn()
+    try:
+        identity = get_identity(conn)
+        me_email = str(identity["email"]) if identity else None
+
+        rows = conn.execute(
+            """
+            SELECT id, parent_message_id FROM sb_webex_messages
+            WHERE parent_message_id IS NOT NULL AND parent_sender_email IS NULL
+            ORDER BY occurred_at DESC
+            LIMIT ?
+            """,
+            (max(1, min(limit, 500)),),
+        ).fetchall()
+
+        updated = 0
+        errors: list[str] = []
+        for row in rows:
+            try:
+                parent = client.get_message(row["parent_message_id"])
+            except Exception as exc:  # noqa: BLE001 -- one bad lookup must not stop the loop
+                errors.append(f"{row['parent_message_id']}: {exc}")
+                continue
+            if not parent:
+                continue
+            sender = str(parent.get("personEmail") or "") or None
+            is_reply = bool(me_email and sender and sender == me_email)
+            conn.execute(
+                "UPDATE sb_webex_messages SET parent_sender_email = ?, is_reply_to_me = ? WHERE id = ?",
+                (sender, 1 if is_reply else 0, row["id"]),
+            )
+            updated += 1
+        conn.commit()
+        return {"updated": updated, "checked": len(rows), "errors": errors}
+    finally:
+        conn.close()
+
+
+@mcp.tool()
 def list_webex_meetings() -> list[dict]:
     """List mirrored Webex meetings. Read-only."""
     conn = _conn()

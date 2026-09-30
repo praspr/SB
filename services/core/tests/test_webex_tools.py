@@ -302,3 +302,171 @@ def test_sync_does_not_mark_reply_to_me_when_parent_sender_differs(monkeypatch) 
     reply_row = next(row for row in rows if row["id"] == "msg-reply-2")
     assert reply_row["parent_sender_email"] == "someone-else@example.com"
     assert reply_row["is_reply_to_me"] == 0
+
+
+# ---------------------------------------------------------------------------
+# webex_rethread (manual backfill; never auto-run)
+# ---------------------------------------------------------------------------
+
+
+def test_webex_rethread_backfills_unenriched_parent_rows(monkeypatch) -> None:
+    from sb_core.webex_tools import webex_rethread
+
+    conn = connect(settings.db_path)
+    try:
+        _reset_identity(conn)
+        from sb_core.webex_store import set_identity
+
+        set_identity(conn, "me@example.com", "Me Myself")
+        replace_mirror(
+            conn,
+            meetings=[],
+            spaces=[],
+            messages=[
+                {
+                    "id": "msg-old",
+                    "space_id": "s1",
+                    "space_name": "Team",
+                    "sender_name": "Ada",
+                    "preview": "Old reply",
+                    "occurred_at": "2026-09-20T09:00:00Z",
+                    "parent_message_id": "parent-old",
+                }
+            ],
+        )
+    finally:
+        conn.close()
+
+    lookups: list[str] = []
+
+    class _RethreadClient:
+        def get_message(self, message_id: str) -> dict:
+            lookups.append(message_id)
+            return {"id": message_id, "personEmail": "me@example.com"}
+
+    monkeypatch.setattr("sb_core.webex_tools.access_token", lambda: "session")
+    monkeypatch.setattr("sb_core.webex_tools.McpClient", lambda token: _RethreadClient())
+
+    result = webex_rethread()
+
+    assert result["updated"] == 1
+    assert result["checked"] == 1
+    assert lookups == ["parent-old"]
+
+    conn = connect(settings.db_path)
+    try:
+        rows = list_messages(conn)
+    finally:
+        conn.close()
+    row = next(r for r in rows if r["id"] == "msg-old")
+    assert row["parent_sender_email"] == "me@example.com"
+    assert row["is_reply_to_me"] == 1
+
+
+def test_webex_rethread_skips_already_enriched_rows(monkeypatch) -> None:
+    from sb_core.webex_tools import webex_rethread
+
+    conn = connect(settings.db_path)
+    try:
+        _reset_identity(conn)
+        replace_mirror(
+            conn,
+            meetings=[],
+            spaces=[],
+            messages=[
+                {
+                    "id": "msg-enriched",
+                    "space_id": "s1",
+                    "space_name": "Team",
+                    "sender_name": "Ada",
+                    "preview": "Already enriched",
+                    "occurred_at": "2026-09-20T09:00:00Z",
+                    "parent_message_id": "parent-x",
+                    "parent_sender_email": "someone@example.com",
+                    "is_reply_to_me": False,
+                },
+                {
+                    "id": "msg-no-parent",
+                    "space_id": "s1",
+                    "space_name": "Team",
+                    "sender_name": "Bo",
+                    "preview": "No parent",
+                    "occurred_at": "2026-09-20T09:05:00Z",
+                },
+            ],
+        )
+    finally:
+        conn.close()
+
+    class _RethreadClient:
+        def get_message(self, message_id: str) -> dict:
+            raise AssertionError("must not look up already-enriched or parent-less rows")
+
+    monkeypatch.setattr("sb_core.webex_tools.access_token", lambda: "session")
+    monkeypatch.setattr("sb_core.webex_tools.McpClient", lambda token: _RethreadClient())
+
+    result = webex_rethread()
+    assert result["updated"] == 0
+    assert result["checked"] == 0
+
+
+def test_webex_rethread_continues_past_a_failed_lookup(monkeypatch) -> None:
+    from sb_core.webex_tools import webex_rethread
+
+    conn = connect(settings.db_path)
+    try:
+        _reset_identity(conn)
+        replace_mirror(
+            conn,
+            meetings=[],
+            spaces=[],
+            messages=[
+                {
+                    "id": "msg-a",
+                    "space_id": "s1",
+                    "space_name": "Team",
+                    "sender_name": "Ada",
+                    "preview": "a",
+                    "occurred_at": "2026-09-20T09:00:00Z",
+                    "parent_message_id": "parent-a",
+                },
+                {
+                    "id": "msg-b",
+                    "space_id": "s1",
+                    "space_name": "Team",
+                    "sender_name": "Bo",
+                    "preview": "b",
+                    "occurred_at": "2026-09-20T09:01:00Z",
+                    "parent_message_id": "parent-b",
+                },
+            ],
+        )
+    finally:
+        conn.close()
+
+    class _FlakyClient:
+        def get_message(self, message_id: str) -> dict | None:
+            if message_id == "parent-a":
+                raise RuntimeError("network down")
+            return {"id": message_id, "personEmail": "someone@example.com"}
+
+    monkeypatch.setattr("sb_core.webex_tools.access_token", lambda: "session")
+    monkeypatch.setattr("sb_core.webex_tools.McpClient", lambda token: _FlakyClient())
+
+    result = webex_rethread()
+    assert result["updated"] == 1
+    assert result["checked"] == 2
+    assert len(result["errors"]) == 1
+
+
+def test_webex_rethread_without_sign_in_does_not_write(monkeypatch) -> None:
+    from sb_core.webex_tools import webex_rethread
+
+    monkeypatch.setattr("sb_core.webex_tools.access_token", lambda: None)
+    monkeypatch.setattr(
+        "sb_core.webex_tools.McpClient",
+        lambda token: (_ for _ in ()).throw(AssertionError("no client")),
+    )
+    result = webex_rethread()
+    assert result["updated"] == 0
+    assert result["errors"]
