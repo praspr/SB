@@ -173,7 +173,18 @@ class _IdentityFakeClient(_FakeClient):
         return {"id": message_id, "personEmail": self.parent_sender, "personName": "Parent Sender"}
 
 
+def _reset_identity(conn) -> None:
+    conn.execute("DELETE FROM sb_webex_identity")
+    conn.commit()
+
+
 def test_sync_captures_identity_on_first_sync(monkeypatch) -> None:
+    conn = connect(settings.db_path)
+    try:
+        _reset_identity(conn)
+    finally:
+        conn.close()
+
     fake = _IdentityFakeClient()
     monkeypatch.setattr("sb_core.webex_tools.access_token", lambda: "session")
     monkeypatch.setattr("sb_core.webex_tools.McpClient", lambda token: fake)
@@ -193,6 +204,7 @@ def test_sync_captures_identity_on_first_sync(monkeypatch) -> None:
 def test_sync_does_not_refetch_identity_once_cached(monkeypatch) -> None:
     conn = connect(settings.db_path)
     try:
+        _reset_identity(conn)
         from sb_core.webex_store import set_identity
 
         set_identity(conn, "already-cached@example.com", "Cached Person")
@@ -209,6 +221,12 @@ def test_sync_does_not_refetch_identity_once_cached(monkeypatch) -> None:
 
 
 def test_sync_enriches_reply_to_me_from_parent_lookup(monkeypatch) -> None:
+    conn = connect(settings.db_path)
+    try:
+        _reset_identity(conn)
+    finally:
+        conn.close()
+
     fake = _IdentityFakeClient(me_email="me@example.com", parent_sender="me@example.com")
 
     class _ReplyClient(_IdentityFakeClient):
@@ -247,6 +265,12 @@ def test_sync_enriches_reply_to_me_from_parent_lookup(monkeypatch) -> None:
 
 
 def test_sync_does_not_mark_reply_to_me_when_parent_sender_differs(monkeypatch) -> None:
+    conn = connect(settings.db_path)
+    try:
+        _reset_identity(conn)
+    finally:
+        conn.close()
+
     class _ReplyClient(_IdentityFakeClient):
         def call_tool(self, name: str, arguments: dict | None = None) -> dict:
             if name == "list_messages":
