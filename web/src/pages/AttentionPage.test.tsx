@@ -52,6 +52,33 @@ describe('attention page', () => {
     expect(html).toContain('Logged as [ledger:12]')
   })
 
+  it('shows general Webex messages instead of dropping them', () => {
+    const html = renderToStaticMarkup(
+      <AttentionView
+        items={[
+          {
+            id: 'msg-2',
+            space_id: 's2',
+            space_name: 'Team room',
+            sender_name: 'Bo',
+            is_dm: false,
+            is_mention: false,
+            is_unread: true,
+            preview: 'The build finished',
+            occurred_at: '2026-09-30T11:00:00Z',
+            triage_kind: 'message',
+            suggested_action_verb: 'Reviewed',
+          },
+        ]}
+        toast={null}
+        onLog={async () => undefined}
+      />
+    )
+    expect(html).toContain('Messages')
+    expect(html).toContain('The build finished')
+    expect(html).not.toContain('Inbox zero')
+  })
+
   it('loads filtered attention for the page query', () => {
     const client = new QueryClient()
     const html = renderToStaticMarkup(

@@ -10,7 +10,8 @@ type ToastState = { id: number; label: string } | null
 function sectionTitle(kind: string) {
   if (kind === 'mention') return 'Mentions'
   if (kind === 'dm') return 'DMs'
-  return 'Questions'
+  if (kind === 'question') return 'Questions'
+  return 'Messages'
 }
 
 export function AttentionView({
@@ -27,7 +28,7 @@ export function AttentionView({
   onLog: (item: AttentionItem, input: { project: string; action_verb: string; summary: string; body?: string }) => Promise<unknown>
 }) {
   const grouped = useMemo(() => {
-    return ['mention', 'dm', 'question'].map((kind) => ({ kind, items: items.filter((item) => item.triage_kind === kind) }))
+    return ['mention', 'dm', 'question', 'message'].map((kind) => ({ kind, items: items.filter((item) => item.triage_kind === kind) }))
   }, [items])
 
   return (

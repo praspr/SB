@@ -27,7 +27,18 @@ mcp = FastMCP(
 
 _QUESTION_RE = re.compile(r"\?|\b(please|can you|could you|need|follow up)\b", re.I)
 _JIRA_RE = re.compile(r"\b([A-Z][A-Z0-9]+-\d+)\b")
-_STOP_WORDS = {"the", "and", "with", "from", "that", "this", "into", "about", "for", "your"}
+_STOP_WORDS = {
+    "the",
+    "and",
+    "with",
+    "from",
+    "that",
+    "this",
+    "into",
+    "about",
+    "for",
+    "your",
+}
 
 
 def _get_conn() -> sqlite3.Connection:
@@ -71,19 +82,17 @@ def _hours_since(value: str | None) -> float | None:
     return round(max(0.0, (_now() - dt).total_seconds() / 3600), 1)
 
 
-def _triage_kind(message: dict[str, Any]) -> str | None:
+def _triage_kind(message: dict[str, Any]) -> str:
     """Classify an attention item.
 
-    Only returns ``"mention"`` or ``"dm"`` — anything else returns None so the
-    caller can drop it. This keeps Attention narrow: 1:1 DMs and explicit
-    @mentions only. Thread-replies to the user's own messages will be a
-    follow-up once a ``parent_message_id`` column exists (see PENDING notes).
+    Mentions and direct messages stay distinct. Every other mirrored message
+    is kept as ``"message"`` so the inbox matches the landing-page count.
     """
     if bool(message.get("is_mention")):
         return "mention"
     if bool(message.get("is_dm")):
         return "dm"
-    return None
+    return "message"
 
 
 def _suggested_action(kind: str) -> str:
@@ -92,7 +101,8 @@ def _suggested_action(kind: str) -> str:
 
 def _title_keywords(title: str) -> list[str]:
     return [
-        token for token in re.findall(r"[A-Za-z0-9-]{3,}", title.lower())
+        token
+        for token in re.findall(r"[A-Za-z0-9-]{3,}", title.lower())
         if token not in _STOP_WORDS
     ]
 
@@ -110,7 +120,9 @@ def _meeting_payload(meeting: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
-def _message_overlaps(message: dict[str, Any], attendees: list[dict[str, Any]], keywords: list[str]) -> bool:
+def _message_overlaps(
+    message: dict[str, Any], attendees: list[dict[str, Any]], keywords: list[str]
+) -> bool:
     sender_name = str(message.get("sender_name") or "").lower()
     sender_email = str(message.get("sender_email") or "").lower()
     space_name = str(message.get("space_name") or "").lower()
@@ -123,12 +135,18 @@ def _message_overlaps(message: dict[str, Any], attendees: list[dict[str, Any]], 
     return any(keyword in space_name for keyword in keywords)
 
 
-def _entry_overlaps(entry: dict[str, Any], attendees: list[dict[str, Any]], keywords: list[str]) -> bool:
+def _entry_overlaps(
+    entry: dict[str, Any], attendees: list[dict[str, Any]], keywords: list[str]
+) -> bool:
     blob = " ".join(
         [
             str(entry.get("summary") or ""),
             str(entry.get("body") or ""),
-            " ".join(str(ref.get("value") or "") for ref in entry.get("refs") or [] if isinstance(ref, dict)),
+            " ".join(
+                str(ref.get("value") or "")
+                for ref in entry.get("refs") or []
+                if isinstance(ref, dict)
+            ),
         ]
     ).lower()
     for attendee in attendees:
@@ -141,24 +159,36 @@ def _entry_overlaps(entry: dict[str, Any], attendees: list[dict[str, Any]], keyw
     return any(keyword in blob for keyword in keywords)
 
 
-def _recent_messages_for_meeting(conn: sqlite3.Connection, meeting: dict[str, Any]) -> list[dict[str, Any]]:
+def _recent_messages_for_meeting(
+    conn: sqlite3.Connection, meeting: dict[str, Any]
+) -> list[dict[str, Any]]:
     attendees = meeting.get("attendees") or []
     keywords = _title_keywords(str(meeting.get("title") or ""))
     rows = list_messages(conn)
     filtered = [row for row in rows if _message_overlaps(row, attendees, keywords)]
-    return sorted(filtered, key=lambda row: str(row.get("occurred_at") or ""), reverse=True)[:5]
+    return sorted(
+        filtered, key=lambda row: str(row.get("occurred_at") or ""), reverse=True
+    )[:5]
 
 
-def _recent_ledger_for_meeting(conn: sqlite3.Connection, meeting: dict[str, Any]) -> list[dict[str, Any]]:
+def _recent_ledger_for_meeting(
+    conn: sqlite3.Connection, meeting: dict[str, Any]
+) -> list[dict[str, Any]]:
     since = (_now() - timedelta(days=14)).strftime("%Y-%m-%dT%H:%M:%SZ")
     candidates = ledger_store.search_ledger(conn, since=since, limit=200)
     attendees = meeting.get("attendees") or []
     keywords = _title_keywords(str(meeting.get("title") or ""))
-    matched = [entry for entry in candidates if _entry_overlaps(entry, attendees, keywords)]
-    project_counts = Counter(entry.get("project") for entry in matched if entry.get("project"))
+    matched = [
+        entry for entry in candidates if _entry_overlaps(entry, attendees, keywords)
+    ]
+    project_counts = Counter(
+        entry.get("project") for entry in matched if entry.get("project")
+    )
     if project_counts:
         matched_project = project_counts.most_common(1)[0][0]
-        matched = [entry for entry in matched if entry.get("project") == matched_project]
+        matched = [
+            entry for entry in matched if entry.get("project") == matched_project
+        ]
     return matched[:10]
 
 
@@ -168,7 +198,9 @@ def _related_jiras(entries: list[dict[str, Any]]) -> list[str]:
         for ref in entry.get("refs") or []:
             if isinstance(ref, dict) and ref.get("kind") == "jira" and ref.get("value"):
                 keys.append(str(ref["value"]))
-        keys.extend(_JIRA_RE.findall(f"{entry.get('summary') or ''} {entry.get('body') or ''}"))
+        keys.extend(
+            _JIRA_RE.findall(f"{entry.get('summary') or ''} {entry.get('body') or ''}")
+        )
     return list(dict.fromkeys(keys))[:10]
 
 
@@ -194,7 +226,9 @@ def _open_todos_for_meeting(meeting: dict[str, Any]) -> list[dict[str, Any]]:
 
     matched = []
     for todo in todos:
-        blob = f"{getattr(todo, 'title', '')} {getattr(todo, 'description', '')}".lower()
+        blob = (
+            f"{getattr(todo, 'title', '')} {getattr(todo, 'description', '')}".lower()
+        )
         if any(keyword in blob for keyword in keywords):
             matched.append(
                 {
@@ -206,7 +240,9 @@ def _open_todos_for_meeting(meeting: dict[str, Any]) -> list[dict[str, Any]]:
     return matched[:3]
 
 
-def _meeting_messages_window(conn: sqlite3.Connection, meeting: dict[str, Any]) -> list[dict[str, Any]]:
+def _meeting_messages_window(
+    conn: sqlite3.Connection, meeting: dict[str, Any]
+) -> list[dict[str, Any]]:
     start = _parse_dt(str(meeting.get("start") or ""))
     end = _parse_dt(str(meeting.get("end") or ""))
     if start is None or end is None:
@@ -225,7 +261,9 @@ def _meeting_messages_window(conn: sqlite3.Connection, meeting: dict[str, Any]) 
     return sorted(result, key=lambda row: str(row.get("occurred_at") or ""))
 
 
-def _fallback_drafts(meeting: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+def _fallback_drafts(
+    meeting: dict[str, Any],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     title = str(meeting.get("title") or "Meeting")
     meeting_id = str(meeting.get("id") or "")
     return (
@@ -246,7 +284,9 @@ def _fallback_drafts(meeting: dict[str, Any]) -> tuple[list[dict[str, Any]], lis
     )
 
 
-def _parse_llm_drafts(text: str, meeting: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+def _parse_llm_drafts(
+    text: str, meeting: dict[str, Any]
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     try:
         payload = json.loads(text)
     except json.JSONDecodeError:
@@ -332,8 +372,6 @@ def _decorate_attention(ranked: list[dict[str, Any]]) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
     for row in ranked:
         kind = _triage_kind(row)
-        if kind is None:
-            continue
         result.append(
             {
                 **row,
@@ -350,7 +388,9 @@ def pre_meeting_context(meeting_id: str) -> dict[str, Any]:
     """Return best-effort pre-meeting context from the local mirror and ledger."""
     conn = _get_conn()
     try:
-        meeting = next((row for row in list_meetings(conn) if row.get("id") == meeting_id), None)
+        meeting = next(
+            (row for row in list_meetings(conn) if row.get("id") == meeting_id), None
+        )
         if meeting is None:
             return {
                 "meeting": {},
@@ -378,7 +418,9 @@ def propose_meeting_notes(meeting_id: str) -> dict[str, Any]:
     """Draft ledger-entry and todo proposals from a recent meeting."""
     conn = _get_conn()
     try:
-        meeting = next((row for row in list_meetings(conn) if row.get("id") == meeting_id), None)
+        meeting = next(
+            (row for row in list_meetings(conn) if row.get("id") == meeting_id), None
+        )
         if meeting is None:
             return {"proposal_ids": [], "draft_count": 0}
         messages = _meeting_messages_window(conn, meeting)

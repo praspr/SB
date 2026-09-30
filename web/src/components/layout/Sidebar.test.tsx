@@ -23,5 +23,7 @@ describe('Sidebar', () => {
     expect(html).toContain('Goals')
     expect(html).toContain('href="/goals"')
     expect(html.indexOf('Goals')).toBeLessThan(html.indexOf('Reports'))
+    expect(html).toContain('Add todo')
+    expect(html).toContain('Command palette')
   })
 })

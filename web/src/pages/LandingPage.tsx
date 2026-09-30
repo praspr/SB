@@ -1,6 +1,8 @@
+import { useQuery } from '@tanstack/react-query'
 import { AlertCircle, ArrowRight, CalendarDays, CheckCircle2, Sparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { useTodayTasks, useTodayMeetings, useJiraTickets, useWebexAttention } from '@/lib/queries'
+import { useTodayTasks, useTodayMeetings, useJiraTickets } from '@/lib/queries'
+import { webexAttentionFiltered } from '@/lib/triage'
 import { TaskList } from '@/components/tasks/TaskList'
 import { MeetingList } from '@/components/meetings/MeetingList'
 import { ChatPanel } from '@/components/landing/ChatPanel'
@@ -8,7 +10,11 @@ import { ChatPanel } from '@/components/landing/ChatPanel'
 export function LandingPage() {
   const { data: tasks, isLoading: tasksLoading } = useTodayTasks()
   const { data: meetings, isLoading: meetingsLoading } = useTodayMeetings()
-  const attention = useWebexAttention()
+  const attention = useQuery({
+    queryKey: ['triage', 'attention'],
+    queryFn: () => webexAttentionFiltered(30),
+    staleTime: 30_000,
+  })
   const tickets = useJiraTickets()
   const blockedTickets = (tickets.data ?? []).filter((ticket) => ticket.status === 'Blocked')
   const attentionCount = (attention.data?.length ?? 0) + blockedTickets.length

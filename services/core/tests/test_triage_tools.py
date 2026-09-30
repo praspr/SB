@@ -14,7 +14,9 @@ from sb_core.store.ledger import append_ledger
 from sb_core.webex_store import replace_mirror
 
 
-def _patch_conns(monkeypatch: pytest.MonkeyPatch, core_db: Path, todos_db: Path) -> None:
+def _patch_conns(
+    monkeypatch: pytest.MonkeyPatch, core_db: Path, todos_db: Path
+) -> None:
     from sb_todos.db import connect as connect_todos
 
     monkeypatch.setattr(tt, "_get_conn", lambda: connect(core_db))
@@ -38,11 +40,14 @@ def test_triage_tools_are_registered_and_mounted() -> None:
     assert "webex_attention_filtered" in mounted
 
 
-def test_webex_attention_ranked_adds_metadata(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_webex_attention_ranked_adds_metadata(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     core_db = tmp_path / "core.db"
     todos_db = tmp_path / "todos.db"
     connect(core_db).close()
     from sb_todos.db import connect as connect_todos
+
     connect_todos(todos_db).close()
     _patch_conns(monkeypatch, core_db, todos_db)
 
@@ -77,7 +82,48 @@ def test_webex_attention_ranked_adds_metadata(tmp_path: Path, monkeypatch: pytes
     assert rows[0]["staleness_hours"] is not None
 
 
-def test_pre_meeting_context_returns_partial_matches(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_ranked_attention_keeps_general_messages(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    core_db = tmp_path / "core.db"
+    todos_db = tmp_path / "todos.db"
+    connect(core_db).close()
+    from sb_todos.db import connect as connect_todos
+
+    connect_todos(todos_db).close()
+    _patch_conns(monkeypatch, core_db, todos_db)
+
+    conn = connect(core_db)
+    try:
+        replace_mirror(
+            conn,
+            meetings=[],
+            spaces=[],
+            messages=[
+                {
+                    "id": "msg-general",
+                    "space_id": "s1",
+                    "space_name": "Team room",
+                    "sender_name": "Bo",
+                    "is_dm": False,
+                    "is_mention": False,
+                    "is_unread": True,
+                    "preview": "The build finished",
+                    "occurred_at": "2026-09-30T09:00:00Z",
+                }
+            ],
+        )
+    finally:
+        conn.close()
+
+    rows = tt.webex_attention_ranked()
+    assert [row["id"] for row in rows] == ["msg-general"]
+    assert rows[0]["triage_kind"] == "message"
+
+
+def test_pre_meeting_context_returns_partial_matches(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from sb_todos import handlers
     from sb_todos.db import connect as connect_todos
     from sb_todos.models import TodoCreate
@@ -132,7 +178,10 @@ def test_pre_meeting_context_returns_partial_matches(tmp_path: Path, monkeypatch
 
     todos_conn = connect_todos(todos_db)
     try:
-        handlers.add_todo(todos_conn, TodoCreate(title="Prep release review notes", priority=1, domain="work"))
+        handlers.add_todo(
+            todos_conn,
+            TodoCreate(title="Prep release review notes", priority=1, domain="work"),
+        )
     finally:
         todos_conn.close()
 
@@ -144,14 +193,19 @@ def test_pre_meeting_context_returns_partial_matches(tmp_path: Path, monkeypatch
     assert result["open_todos"][0]["title"] == "Prep release review notes"
 
 
-def test_propose_meeting_notes_falls_back_when_llm_unavailable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_propose_meeting_notes_falls_back_when_llm_unavailable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     core_db = tmp_path / "core.db"
     todos_db = tmp_path / "todos.db"
     connect(core_db).close()
     from sb_todos.db import connect as connect_todos
+
     connect_todos(todos_db).close()
     _patch_conns(monkeypatch, core_db, todos_db)
-    monkeypatch.setattr(tt, "_llm_complete", lambda prompt: (_ for _ in ()).throw(RuntimeError("down")))
+    monkeypatch.setattr(
+        tt, "_llm_complete", lambda prompt: (_ for _ in ()).throw(RuntimeError("down"))
+    )
 
     conn = connect(core_db)
     try:

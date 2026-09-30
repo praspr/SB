@@ -14,6 +14,7 @@ vi.mock('@/lib/queries', () => ({
 }))
 vi.mock('@/lib/ledger', () => ({ ledgerSearch: () => Promise.resolve([]) }))
 vi.mock('@/lib/signals', () => ({ searchSignals: () => Promise.resolve([]) }))
+vi.mock('@/lib/triage', () => ({ webexAttentionFiltered: () => Promise.resolve([]) }))
 vi.mock('@/components/landing/MorningBrief', () => ({ MorningBrief: () => <div>Morning summary</div> }))
 vi.mock('@/components/landing/UsageStats', () => ({ UsageStats: () => <div>Usage metrics</div> }))
 vi.mock('@/components/landing/DashboardInsights', () => ({ DashboardInsights: () => <div>Status analytics</div> }))

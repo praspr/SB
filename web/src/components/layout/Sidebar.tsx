@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ListTodo, Calendar, MessageSquare, Ticket, Library, Radio, ChevronLeft, ChevronRight, Settings, FileText, BookOpen, Inbox, Target } from 'lucide-react'
+import { ListTodo, Calendar, MessageSquare, Ticket, Library, Radio, ChevronLeft, ChevronRight, Settings, FileText, BookOpen, Inbox, Target, Plus, Command } from 'lucide-react'
 import { SettingsPopover } from '@/components/layout/SettingsPopover'
 import { webexAttentionRanked } from '@/lib/triage'
 import { useUiStore } from '@/lib/store'
@@ -23,6 +23,8 @@ const navItems = [
 export function Sidebar() {
   const collapsed = useUiStore((s) => s.sidebarCollapsed)
   const toggleSidebar = useUiStore((s) => s.toggleSidebar)
+  const openAddTodo = useUiStore((s) => s.openAddTodo)
+  const setCommandPaletteOpen = useUiStore((s) => s.setCommandPaletteOpen)
   const attention = useQuery({
     queryKey: ['triage', 'attention', 'sidebar'],
     queryFn: () => webexAttentionRanked(30),
@@ -97,7 +99,42 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className={cn('px-3 pb-3', collapsed ? 'flex justify-center' : 'flex justify-end')}>
+      <div className="space-y-1 border-t border-border-subtle px-2.5 py-3">
+        <button
+          type="button"
+          onClick={() => openAddTodo()}
+          title="Add todo"
+          className={cn(
+            'flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-13 font-medium text-text-secondary transition hover:bg-bg-elevated hover:text-text-primary',
+            collapsed && 'justify-center px-0',
+          )}
+        >
+          <Plus size={18} className="shrink-0" />
+          {!collapsed && (
+            <>
+              <span>Add todo</span>
+              <span className="ml-auto text-12 text-text-muted">⌘N</span>
+            </>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setCommandPaletteOpen(true)}
+          title="Command palette"
+          className={cn(
+            'flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-13 font-medium text-text-secondary transition hover:bg-bg-elevated hover:text-text-primary',
+            collapsed && 'justify-center px-0',
+          )}
+        >
+          <Command size={18} className="shrink-0" />
+          {!collapsed && (
+            <>
+              <span>Command palette</span>
+              <span className="ml-auto text-12 text-text-muted">⌘K</span>
+            </>
+          )}
+        </button>
+        <div className={cn('pt-1', collapsed ? 'flex justify-center' : 'flex justify-end')}>
           <SettingsPopover>
             <button
               type="button"
@@ -108,6 +145,7 @@ export function Sidebar() {
               <Settings size={16} />
             </button>
           </SettingsPopover>
+        </div>
       </div>
     </aside>
   )

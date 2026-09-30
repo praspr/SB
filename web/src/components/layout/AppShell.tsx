@@ -52,13 +52,13 @@ export function AppShell() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [setCommandPaletteOpen, navigate, triggerFocusQuickAdd])
 
-  const meta = titles[location.pathname] ?? { title: 'sb' }
+  const meta = titles[location.pathname]
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-bg-app text-text-primary">
       <Sidebar />
       <main className="flex min-w-0 flex-1 flex-col">
-        <TopBar title={meta.title} subtitle={meta.subtitle} />
+        <TopBar />
         <div className="flex-1 overflow-y-auto px-6 py-6 lg:px-8">
           <AnimatePresence mode="wait">
             <motion.div
@@ -68,6 +68,12 @@ export function AppShell() {
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
             >
+              {meta && location.pathname !== '/' && (
+                <div className="mb-6">
+                  <h1 className="text-20 font-semibold tracking-tight text-text-primary">{meta.title}</h1>
+                  {meta.subtitle && <p className="mt-1 text-13 text-text-secondary">{meta.subtitle}</p>}
+                </div>
+              )}
               {outlet}
             </motion.div>
           </AnimatePresence>
