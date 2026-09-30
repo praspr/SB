@@ -124,6 +124,9 @@ class Settings(BaseSettings):
     # Git author filter (e.g. ["you@example.com"])
     git_authors: list[str] = []
 
+    # Bounded roots to scan for ledger project suggestions (not auto-enrolled)
+    ledger_roots: list[str] = ["~/Documents/code_home"]
+
     # ---- Identity (optional; no secrets) ----
     identity_name: str | None = None
     identity_email: str | None = None
@@ -135,7 +138,7 @@ class Settings(BaseSettings):
     llm_base_url: str = "http://127.0.0.1:9999"
     llm_timeout: float = 30.0
     llm_tier: str | None = None
-    llm_model: str = "claude"
+    llm_model: str = "claude-haiku-4.5-low"
     llm_cache_dir: Path = Path("~/.local/share/sb/cache")
 
     # ---- Expand nested identity + derive detailed roots from YAML/env ----
@@ -167,7 +170,7 @@ class Settings(BaseSettings):
 
     # ---- List-field validators: accept JSON arrays OR space-separated values ----
 
-    @field_validator("roots", "git_authors", "extra_skill_roots", mode="before")
+    @field_validator("roots", "git_authors", "extra_skill_roots", "ledger_roots", mode="before")
     @classmethod
     def _coerce_list(cls, v: Any) -> Any:  # noqa: N805
         """Accept JSON-encoded lists, space-separated strings from env, or YAML lists.
@@ -224,3 +227,47 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+# ---------------------------------------------------------------------------
+# Ledger project registry seed (decision 9: seed exactly ciq + sb, dual mode)
+# ---------------------------------------------------------------------------
+
+_SEED_PROJECTS: tuple[dict, ...] = (
+    {
+        "project": "ciq",
+        "root_path": "~/Documents/code_home/ciq",
+        "changelog_path": "~/Documents/code_home/ciq/CHANGELOG.md",
+        "sync_mode": "dual",
+    },
+    {
+        "project": "sb",
+        "root_path": "~/Documents/code_home/sb",
+        "changelog_path": "~/Documents/code_home/sb/CHANGELOG.md",
+        "sync_mode": "dual",
+    },
+)
+
+
+def seed_registry_if_empty(conn: Any) -> bool:
+    """Seed ``sb_project_registry`` with ``ciq`` and ``sb`` if it is empty.
+
+    Never auto-enrolls any other repo. Returns True if a seed was performed.
+    """
+    row = conn.execute("SELECT COUNT(*) AS n FROM sb_project_registry").fetchone()
+    if row is not None and int(row["n"]) > 0:
+        return False
+
+    for seed in _SEED_PROJECTS:
+        root = str(Path(seed["root_path"]).expanduser())
+        changelog = str(Path(seed["changelog_path"]).expanduser())
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO sb_project_registry
+              (project, root_path, changelog_path, sync_mode)
+            VALUES (?, ?, ?, ?)
+            """,
+            (seed["project"], root, changelog, seed["sync_mode"]),
+        )
+    conn.commit()
+    return True

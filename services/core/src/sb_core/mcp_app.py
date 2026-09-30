@@ -26,6 +26,7 @@ def _mount_domains() -> None:
     mcp.mount(todos_mcp)
     mcp.mount(jira_mcp)
     from .chat_tools import mcp as chat_mcp
+    from .ledger_tools import mcp as ledger_mcp
     from .skills import register_skill_tools
     from .ritual_tools import mcp as ritual_mcp
     from .sync_tools import mcp as sync_mcp
@@ -36,6 +37,22 @@ def _mount_domains() -> None:
     mcp.mount(sync_mcp)
     mcp.mount(ritual_mcp)
     mcp.mount(webex_mcp)
+    mcp.mount(ledger_mcp)
+
+    _seed_ledger_registry()
+
+
+def _seed_ledger_registry() -> None:
+    """Seed the ledger project registry on first run, using a fresh short-lived
+    connection. No-op if the registry already has rows."""
+    from .config import seed_registry_if_empty, settings
+    from .store.db import connect
+
+    conn = connect(settings.db_path)
+    try:
+        seed_registry_if_empty(conn)
+    finally:
+        conn.close()
 
 
 _mount_domains()
