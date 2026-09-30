@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { Home, ListTodo, Calendar, MessageSquare, Ticket, Activity, Library, Radio, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Home, ListTodo, Calendar, MessageSquare, Ticket, Activity, Library, Radio, Sun, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useUiStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
@@ -8,6 +8,7 @@ const navItems = [
   { to: '/status', label: 'Status', icon: Activity, end: false },
   { to: '/skills', label: 'Skills', icon: Library, end: false },
   { to: '/signals', label: 'Signals', icon: Radio, end: false },
+  { to: '/today', label: 'Today', icon: Sun, end: false },
   { to: '/todos', label: 'Todos', icon: ListTodo, end: false },
   { to: '/jira', label: 'JIRAs', icon: Ticket, end: false },
   { to: '/meetings', label: 'Meetings', icon: Calendar, end: false },

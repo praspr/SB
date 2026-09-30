@@ -76,7 +76,9 @@ home directory. Content identity uses SHA-256. The dashboard lists skills at
 
 Signal adapters (`todos`, `jira`, `changelog`, `git`) write canonical UTC rows
 into `sb_signals`. Search them with `search_signals` and cite `[signal:N]`.
-The dashboard shows them at `/signals`.
+The dashboard shows them at `/signals`. `plan_day` ranks open todos into
+`sb_daily` plan columns without overwriting wrap. The dashboard shows that
+plan at `/today`.
 
 ```bash
 cd sb/services/core

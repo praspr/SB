@@ -97,16 +97,40 @@ def _m4_sync_state(conn: sqlite3.Connection) -> None:
         """)
 
 
+def _m5_daily(conn: sqlite3.Connection) -> None:
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS sb_daily (
+          date       TEXT PRIMARY KEY,
+          payload    TEXT NOT NULL DEFAULT '{}',
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          plan_md    TEXT,
+          plan_data  TEXT,
+          wrap_md    TEXT,
+          wrap_data  TEXT
+        )
+        """)
+    _add_column(conn, "sb_daily", "plan_md", "TEXT")
+    _add_column(conn, "sb_daily", "plan_data", "TEXT")
+    _add_column(conn, "sb_daily", "wrap_md", "TEXT")
+    _add_column(conn, "sb_daily", "wrap_data", "TEXT")
+
+
 _MIGRATIONS: list[tuple[int, Callable[[sqlite3.Connection], None]]] = [
     (1, _m1_metadata),
     (2, _m2_skills),
     (3, _m3_signals),
     (4, _m4_sync_state),
+    (5, _m5_daily),
 ]
 
-# Tables whose required columns are re-verified on every connect. Empty until
-# later steps add columns that must survive a partial migration.
-_REQUIRED_COLUMNS: dict[str, dict[str, str]] = {}
+_REQUIRED_COLUMNS: dict[str, dict[str, str]] = {
+    "sb_daily": {
+        "plan_md": "TEXT",
+        "plan_data": "TEXT",
+        "wrap_md": "TEXT",
+        "wrap_data": "TEXT",
+    },
+}
 
 
 def _configure(conn: sqlite3.Connection) -> None:
