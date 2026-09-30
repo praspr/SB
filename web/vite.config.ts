@@ -18,15 +18,10 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/proxy\/claudegate/, ''),
       },
-      '/proxy/todos': {
-        target: 'http://localhost:58788',
+      '/proxy/mcp': {
+        target: 'http://127.0.0.1:8787',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/proxy\/todos/, ''),
-      },
-      '/proxy/jira': {
-        target: 'http://localhost:58789',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/proxy\/jira/, ''),
+        rewrite: (path) => path.replace(/^\/proxy\/mcp/, '/mcp'),
       },
       '/proxy/cursor': {
         target: 'https://cursor.com',

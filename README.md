@@ -55,6 +55,57 @@ with common dev services.
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
+## Unified core
+
+`services/core` is the single local MCP process. It binds to `127.0.0.1:8787`,
+serves Streamable HTTP at `/mcp` and compatibility SSE at `/sse`, and exposes
+operational readiness at `GET /health` and in the dashboard at `/status`.
+The database defaults to `~/.local/share/sb/core.db` (WAL, foreign keys, a
+5-second busy timeout, and a versioned migration table). Step 1 stores
+metadata only.
+
+```bash
+cd sb/services/core
+uv sync --group dev
+uv run uvicorn sb_core.main:app --host 127.0.0.1 --port 8787
+```
+
+The dashboard talks to that process through Vite `/proxy/mcp`. Copilot and
+Cursor usage proxies stay independent.
+
+### Cutover (prepared, not applied)
+
+Do not load this until todos and JIRA are mounted in-process. The plist is
+`services/core/launchd/com.praspr.sb.plist`. Exact commands, run from the repo
+root, for the later operational cutover:
+
+```bash
+# Install and load the unified service
+cp services/core/launchd/com.praspr.sb.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.praspr.sb.plist
+
+# Retire the standalone todos and JIRA jobs
+launchctl bootout gui/$(id -u)/com.praspr.sb-todos || true
+launchctl bootout gui/$(id -u)/com.praspr.sb-jira || true
+rm -f ~/Library/LaunchAgents/com.praspr.sb-todos.plist
+rm -f ~/Library/LaunchAgents/com.praspr.sb-jira.plist
+
+# Smoke
+curl -s http://127.0.0.1:8787/health
+```
+
+Harness MCP entries, leaving every unrelated server untouched:
+
+| Harness | Config | Entry |
+|---|---|---|
+| Cursor | `~/.cursor/mcp.json` | one server named `sb` at `http://127.0.0.1:8787/sse` (or `/mcp` if the client supports Streamable HTTP) |
+| Claude Code | `~/.claude.json` | one HTTP MCP named `sb` at `http://127.0.0.1:8787/mcp` |
+| OpenCode | `~/.config/opencode/opencode.json` | one HTTP MCP named `sb` at `http://127.0.0.1:8787/mcp` |
+
+Remove only the previous `sb-todos` and `sb-jira` entries in those files.
+Tokens stay in the macOS Keychain (`sb` / `jira.token`) or external config.
+No credentials belong in Git.
+
 ## How to run
 
 ### Prerequisites
