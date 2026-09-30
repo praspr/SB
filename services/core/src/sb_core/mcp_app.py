@@ -11,14 +11,16 @@ from .store.db import connect, schema_version
 mcp = FastMCP("sb")
 
 
-def _mount_todos() -> None:
-    """Mount todo tools in-process with their original names."""
+def _mount_domains() -> None:
+    """Mount domain tools in-process with their original names."""
+    from sb_jira.mcp_tools import mcp as jira_mcp
     from sb_todos.mcp_tools import mcp as todos_mcp
 
     mcp.mount(todos_mcp)
+    mcp.mount(jira_mcp)
 
 
-_mount_todos()
+_mount_domains()
 
 
 async def system_status() -> dict[str, Any]:

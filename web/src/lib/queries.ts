@@ -194,7 +194,21 @@ export function useWebexSpaces() {
   return useQuery({ queryKey: ['webex', 'spaces'], queryFn: fetchWebexSpaces })
 }
 
-// ---- JIRA (real data via sb-jira service proxied at /proxy/jira) ----
+// ---- JIRA (pull-only tools on the unified sb MCP) ----
+
+export async function listJiraTickets(filters?: {
+  status?: JiraStatus | 'all'
+  priority?: JiraPriority | 'all'
+  project?: string | 'all'
+  q?: string
+}): Promise<JiraTicket[]> {
+  return callTool<JiraTicket[]>('list_jira_tickets', {
+    ...(filters?.status && filters.status !== 'all' ? { status: filters.status } : {}),
+    ...(filters?.priority && filters.priority !== 'all' ? { priority: filters.priority } : {}),
+    ...(filters?.project && filters.project !== 'all' ? { project: filters.project } : {}),
+    ...(filters?.q ? { q: filters.q } : {}),
+  })
+}
 
 export function useJiraTickets(filters?: {
   status?: JiraStatus | 'all'
@@ -204,18 +218,7 @@ export function useJiraTickets(filters?: {
 }) {
   return useQuery({
     queryKey: ['jira', 'tickets', filters],
-    queryFn: async (): Promise<JiraTicket[]> => {
-      const res = await fetch('/proxy/jira/api/jira/tickets')
-      if (!res.ok) throw new Error(`sb-jira ${res.status}`)
-      const all: JiraTicket[] = await res.json()
-      return all.filter((t) => {
-        if (filters?.status && filters.status !== 'all' && t.status !== filters.status) return false
-        if (filters?.priority && filters.priority !== 'all' && t.priority !== filters.priority) return false
-        if (filters?.project && filters.project !== 'all' && t.project !== filters.project) return false
-        if (filters?.q && !`${t.key} ${t.title}`.toLowerCase().includes(filters.q.toLowerCase())) return false
-        return true
-      })
-    },
+    queryFn: () => listJiraTickets(filters),
     staleTime: 30_000,
     retry: 1,
   })
@@ -230,14 +233,14 @@ export type JiraSyncResult = {
   history_row_appended: boolean
 }
 
+export function syncJira(): Promise<JiraSyncResult> {
+  return callTool<JiraSyncResult>('sync_jira')
+}
+
 export function useSyncJira() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (): Promise<JiraSyncResult> => {
-      const res = await fetch('/proxy/jira/api/jira/sync', { method: 'POST' })
-      if (!res.ok) throw new Error(`sb-jira sync ${res.status}`)
-      return res.json()
-    },
+    mutationFn: syncJira,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jira'] })
     },
@@ -251,14 +254,14 @@ export type JiraServiceStatus = {
   tickets_count: number
 }
 
+export function fetchJiraStatus(): Promise<JiraServiceStatus> {
+  return callTool<JiraServiceStatus>('jira_status')
+}
+
 export function useJiraStatus() {
   return useQuery({
     queryKey: ['jira', 'status'],
-    queryFn: async (): Promise<JiraServiceStatus> => {
-      const res = await fetch('/proxy/jira/api/jira/status')
-      if (!res.ok) throw new Error(`sb-jira status ${res.status}`)
-      return res.json()
-    },
+    queryFn: fetchJiraStatus,
     staleTime: 60_000,
     retry: 1,
   })

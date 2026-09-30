@@ -64,14 +64,15 @@ export function JirasPage() {
 
       {isError && (
         <div className="rounded-md border border-danger/40 bg-danger/5 p-3 text-13 text-danger">
-          {(error as Error)?.message ?? 'Failed to load tickets'} — is sb-jira running on :8789?
+          {(error as Error)?.message ?? 'Failed to load tickets'} — is sb running on :8787?
         </div>
       )}
 
       <JiraTicketList tickets={tickets} isLoading={isLoading} />
 
       <p className="text-12 text-text-muted">
-        Reading from ciq/docs/jira/tickets/ · {tickets?.length ?? svcStatus?.tickets_count ?? 0} tickets
+        Reading from the local markdown mirror · {tickets?.length ?? svcStatus?.tickets_count ?? 0} tickets
+        {svcStatus?.last_sync_at ? ` · last sync ${svcStatus.last_sync_at}` : ''}
       </p>
     </div>
   )

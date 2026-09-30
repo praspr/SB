@@ -8,6 +8,7 @@ dependencies = [
     "fastmcp>=4.0,<5",
     "pydantic-settings>=2.5",
     "pyyaml>=6",
+    "sb-jira",
     "sb-todos",
     "uvicorn[standard]>=0.34",
 ]
@@ -29,4 +30,5 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 
 [tool.uv.sources]
+sb-jira = { path = "../jira", editable = true }
 sb-todos = { path = "../todos", editable = true }

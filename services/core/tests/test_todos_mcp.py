@@ -35,7 +35,6 @@ def test_parent_lists_todo_tools_without_a_namespace() -> None:
     names = {tool.name for tool in tools}
     assert TODO_TOOLS <= names
     assert not any(name.startswith("todos_") for name in names)
-    assert "list_jira_tickets" not in names
 
 
 def test_add_list_complete_search(

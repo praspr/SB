@@ -58,5 +58,10 @@ def test_sync_jira_no_token_returns_error():
 
 def test_jira_status_shape():
     result = mcp_tools.jira_status()
-    assert set(result.keys()) == {"atlassian_reachable", "atlassian_error", "tickets_count"}
+    assert set(result.keys()) == {
+        "atlassian_reachable",
+        "atlassian_error",
+        "tickets_count",
+        "last_sync_at",
+    }
     assert result["tickets_count"] == 2

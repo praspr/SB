@@ -26,8 +26,8 @@ sb/
 | Service | Port | Transport | Storage | Auto-start |
 |---|---|---|---|---|
 | **sb-todos** | via `sb-core` `:8787` | MCP tools on the unified server | `~/.local/share/sb/todos.db` (SQLite) | no separate job; unload `com.praspr.sb-todos` at cutover |
-| **sb-jira** | `127.0.0.1:58789` | MCP + REST | markdown files at `ciq/docs/jira/tickets/` (read-only) | launchd `com.praspr.sb-jira` |
-| **sb-web** | `127.0.0.1:5173` | HTTP (dev) | mocks + proxied REST from the two services | `npm run dev` |
+| **sb-jira** | via `sb-core` `:8787` | pull-only MCP tools on the unified server | markdown files at `ciq/docs/jira/tickets/` | no separate job; unload `com.praspr.sb-jira` at cutover |
+| **sb-web** | `127.0.0.1:5173` | HTTP (dev) | dashboard via `/proxy/mcp` | `npm run dev` |
 
 Ports live in the IANA Dynamic/Private range (49152–65535) to avoid collisions
 with common dev services.
@@ -63,8 +63,10 @@ operational readiness at `GET /health` and in the dashboard at `/status`.
 The database defaults to `~/.local/share/sb/core.db` (WAL, foreign keys, a
 5-second busy timeout, and a versioned migration table). Todo tools are
 mounted in-process under their original names (`todo_list`, `todo_add`,
-`todo_complete`, and the rest). The dashboard Todos page calls them through
-`/proxy/mcp`.
+`todo_complete`, and the rest). JIRA tools (`list_jira_tickets`,
+`get_jira_ticket`, `sync_jira`, `jira_status`) are mounted the same way and
+only pull Atlassian into local markdown. The dashboard calls both through
+`/proxy/mcp`. `GET /health` does not contact Atlassian.
 
 ```bash
 cd sb/services/core

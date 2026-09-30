@@ -1,16 +1,11 @@
-"""FastMCP tool registrations for sb-jira.
-
-These tools are thin wrappers around the same handler functions used by the
-REST endpoints in `main.py` — no duplicated business logic. Everything here
-is READ-ONLY against Atlassian; `sync_jira` only pulls Atlassian -> local
-files, exactly like `POST /api/jira/sync`.
-"""
+"""FastMCP tool registrations for the pull-only sb-jira library."""
 
 from __future__ import annotations
 
 from fastmcp import FastMCP
 
 from . import atlassian_client, file_store, sync
+from .config import settings
 
 mcp = FastMCP(
     name="sb-jira",
@@ -41,7 +36,9 @@ def list_jira_tickets(
     """
     details = file_store.load_all()
     tickets = [file_store.to_ticket(d) for d in details]
-    filtered = file_store.apply_filters(tickets, status=status, priority=priority, project=project, q=q)
+    filtered = file_store.apply_filters(
+        tickets, status=status, priority=priority, project=project, q=q
+    )
     return [t.model_dump(mode="json") for t in filtered[:limit]]
 
 
@@ -65,13 +62,36 @@ def sync_jira() -> dict:
     return sync.run_sync().model_dump(mode="json")
 
 
+def _last_sync_at() -> str | None:
+    """Read the latest local SYNC date. Does not contact Atlassian."""
+    path = settings.tickethistory_path
+    try:
+        if not path.is_file() or path.is_symlink():
+            return None
+        if path.stat().st_size > 1_000_000:
+            return None
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    last: str | None = None
+    for line in text.splitlines():
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if len(cells) >= 2 and cells[1] == "SYNC" and cells[0]:
+            last = cells[0]
+    return last
+
+
 @mcp.tool()
 def jira_status() -> dict:
-    """Return service status: Atlassian reachability and local ticket count."""
+    """Return local ticket count, last sync, and Atlassian reachability.
+
+    Reachability is a read-only probe. This tool never writes to Atlassian.
+    """
     reachable, error = atlassian_client.probe_reachable()
     tickets = file_store.load_all()
     return {
         "atlassian_reachable": reachable,
         "atlassian_error": error,
         "tickets_count": len(tickets),
+        "last_sync_at": _last_sync_at(),
     }
