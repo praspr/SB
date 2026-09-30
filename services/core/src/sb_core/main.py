@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException
 from . import __version__
 from .config import settings
 from .mcp_app import mcp, system_status
+from .skills import refresh_skill_surface
 from .store.db import connect
 
 mcp_http_app = mcp.http_app(path="/mcp", transport="http")
@@ -18,7 +19,10 @@ mcp_sse_app = mcp.http_app(path="/sse", transport="sse")
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     conn = connect(settings.db_path)
-    conn.close()
+    try:
+        refresh_skill_surface(mcp, conn)
+    finally:
+        conn.close()
     async with AsyncExitStack() as stack:
         await stack.enter_async_context(mcp_http_app.lifespan(mcp_http_app))
         await stack.enter_async_context(mcp_sse_app.lifespan(mcp_sse_app))

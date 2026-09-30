@@ -158,6 +158,27 @@ def test_prompt_and_resource_match_enabled_skills(
     assert "skill_broken" not in prompts
 
 
+def test_startup_restores_skill_surface_from_index(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from fastapi.testclient import TestClient
+
+    from sb_core.config import settings
+    from sb_core.main import app
+
+    project = tmp_path / "project"
+    _write(project, "restored", "indexed before restart")
+    db = tmp_path / "restart.db"
+    _sync(db, [("project", project)])
+    monkeypatch.setattr(settings, "db_path", db)
+
+    with TestClient(app):
+        prompts = {prompt.name for prompt in asyncio.run(mcp.list_prompts())}
+        resources = {str(r.uri) for r in asyncio.run(mcp.list_resources())}
+    assert "skill_restored" in prompts
+    assert "skill://restored" in resources
+
+
 def test_list_skills_filters(tmp_path: Path) -> None:
     project = tmp_path / "project"
     cursor = tmp_path / "cursor"

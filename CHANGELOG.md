@@ -6,6 +6,8 @@
 
 - Reconcile the working tree before the unified MCP rollout. Baseline before Step 1: todos 18 passed, JIRA 14 passed, web MCP client 5 passed, and `tsc --noEmit` clean. The core suite is not green; unfinished ritual tests stay out of the active set until their step.
 
+- Cut over login startup to the single `com.praspr.sb` launchd job and one `sb` MCP entry at `/mcp` in each harness. The standalone todos and JIRA jobs are retired. Startup now restores skill prompts and resources from the stored index, so they survive a restart.
+
 ### Added
 
 - Scaffold `sb-core` on `127.0.0.1:8787` with a metadata-only SQLite schema, `system_status`, `/health`, and a `/status` page. Domain REST routes stay absent. Launchd plist is prepared; login cutover is documented and not applied.

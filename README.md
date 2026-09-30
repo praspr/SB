@@ -25,8 +25,9 @@ sb/
 
 | Service | Port | Transport | Storage | Auto-start |
 |---|---|---|---|---|
-| **sb-todos** | via `sb-core` `:8787` | MCP tools on the unified server | `~/.local/share/sb/todos.db` (SQLite) | no separate job; unload `com.praspr.sb-todos` at cutover |
-| **sb-jira** | via `sb-core` `:8787` | pull-only MCP tools on the unified server | markdown files at `ciq/docs/jira/tickets/` | no separate job; unload `com.praspr.sb-jira` at cutover |
+| **sb-core** | `127.0.0.1:8787` | MCP at `/mcp`, SSE at `/sse`, `GET /health` | `~/.local/share/sb/core.db` (SQLite) | launchd `com.praspr.sb` |
+| **sb-todos** | via `sb-core` `:8787` | MCP tools on the unified server | `~/.local/share/sb/todos.db` (SQLite) | runs inside `sb-core` |
+| **sb-jira** | via `sb-core` `:8787` | pull-only MCP tools on the unified server | markdown files at `ciq/docs/jira/tickets/` | runs inside `sb-core` |
 | **sb-web** | `127.0.0.1:5173` | HTTP (dev) | dashboard via `/proxy/mcp` | `npm run dev` |
 
 Ports live in the IANA Dynamic/Private range (49152–65535) to avoid collisions
@@ -90,11 +91,11 @@ uv run uvicorn sb_core.main:app --host 127.0.0.1 --port 8787
 The dashboard talks to that process through Vite `/proxy/mcp`. Copilot and
 Cursor usage proxies stay independent.
 
-### Cutover (prepared, not applied)
+### Login service
 
-Do not load this until todos and JIRA are mounted in-process. The plist is
-`services/core/launchd/com.praspr.sb.plist`. Exact commands, run from the repo
-root, for the later operational cutover:
+`com.praspr.sb` is the only sb launchd job. The plist is
+`services/core/launchd/com.praspr.sb.plist`. Commands used to install it and
+retire the old standalone jobs, run from the repo root:
 
 ```bash
 # Install and load the unified service
@@ -115,7 +116,7 @@ Harness MCP entries, leaving every unrelated server untouched:
 
 | Harness | Config | Entry |
 |---|---|---|
-| Cursor | `~/.cursor/mcp.json` | one server named `sb` at `http://127.0.0.1:8787/sse` (or `/mcp` if the client supports Streamable HTTP) |
+| Cursor | `~/.cursor/mcp.json` | one server named `sb` at `http://127.0.0.1:8787/mcp` |
 | Claude Code | `~/.claude.json` | one HTTP MCP named `sb` at `http://127.0.0.1:8787/mcp` |
 | OpenCode | `~/.config/opencode/opencode.json` | one HTTP MCP named `sb` at `http://127.0.0.1:8787/mcp` |
 
@@ -141,14 +142,14 @@ npm run dev     # → http://localhost:5173
 ### Core service
 
 Run `sb-core` with the commands in [Unified core](#unified-core). Login
-auto-start is the plist documented under **Cutover (prepared, not applied)**.
-Those commands are not applied by this repository. The standalone todos and
-JIRA launchd plists are no longer in the repo.
+auto-start is the plist documented under **Login service**. Restart it with
+`launchctl kickstart -k gui/$(id -u)/com.praspr.sb`. Skill prompts and
+resources are restored from the stored index at startup.
 
 ## MCP tools
 
-One server, `sb`, is the harness entry. The cutover table above is the
-config to apply later. Do not add `sb-todos` or `sb-jira` network servers.
+One server, `sb`, is the harness entry, configured as in the table above.
+Do not add `sb-todos` or `sb-jira` network servers.
 
 ### sb-todos tools (write-capable)
 
@@ -194,11 +195,10 @@ the quick-add input.
 
 | Purpose | Path |
 |---|---|
+| Core SQLite | `~/.local/share/sb/core.db` |
 | Todos SQLite | `~/.local/share/sb/todos.db` |
-| Todos launchd | `~/Library/LaunchAgents/com.praspr.sb-todos.plist` |
-| JIRA launchd | `~/Library/LaunchAgents/com.praspr.sb-jira.plist` |
-| Todos logs | `/tmp/sb-todos.{out,err}.log` |
-| JIRA logs | `/tmp/sb-jira.{stdout,stderr}.log` |
+| Core launchd | `~/Library/LaunchAgents/com.praspr.sb.plist` |
+| Core logs | `/tmp/sb.{out,err}.log` |
 | Atlassian token (optional, read-only) | macOS Keychain, service `sb`, key `jira.token` |
 
 ## LLM access
