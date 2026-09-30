@@ -3,6 +3,21 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import { TaskList } from '@/components/tasks/TaskList'
+import { TodosPage } from '@/pages/TodosPage'
+
+import { vi } from 'vitest'
+
+vi.mock('@/lib/todos-rich', () => ({ fetchRichTasks: () => Promise.resolve([]) }))
+vi.mock('@/lib/goals', () => ({ listGoalsV2: () => Promise.resolve([]) }))
+vi.mock('@/lib/queries', () => ({
+  listJiraTickets: () => Promise.resolve([{ key: 'CXP-1', status: 'Open', priority: 'High', title: 'Ticket' }]),
+  useCompleteTask: () => ({ mutate: () => undefined }),
+  useAddTask: () => ({ mutate: () => undefined }),
+}))
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
+  return { ...actual, useSearchParams: () => [new URLSearchParams()] }
+})
 
 describe('todos ui', () => {
   it('renders goal, jira, and recurrence chips', () => {
@@ -32,5 +47,17 @@ describe('todos ui', () => {
     expect(html).toContain('Portal launch')
     expect(html).toContain('CXP-42')
     expect(html).toContain('weekly')
+  })
+
+  it('shows the jira import action in the header', () => {
+    const client = new QueryClient()
+    const html = renderToStaticMarkup(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <TodosPage />
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+    expect(html).toContain('Import assigned JIRAs')
   })
 })
