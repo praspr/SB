@@ -11,6 +11,16 @@ from .store.db import connect, schema_version
 mcp = FastMCP("sb")
 
 
+def _mount_todos() -> None:
+    """Mount todo tools in-process with their original names."""
+    from sb_todos.mcp_tools import mcp as todos_mcp
+
+    mcp.mount(todos_mcp)
+
+
+_mount_todos()
+
+
 async def system_status() -> dict[str, Any]:
     """Return a privacy-safe readiness summary for the local core service."""
     database_ready = False

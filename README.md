@@ -25,7 +25,7 @@ sb/
 
 | Service | Port | Transport | Storage | Auto-start |
 |---|---|---|---|---|
-| **sb-todos** | `127.0.0.1:58788` | MCP + REST | `~/.local/share/sb/todos.db` (SQLite) | launchd `com.praspr.sb-todos` |
+| **sb-todos** | via `sb-core` `:8787` | MCP tools on the unified server | `~/.local/share/sb/todos.db` (SQLite) | no separate job; unload `com.praspr.sb-todos` at cutover |
 | **sb-jira** | `127.0.0.1:58789` | MCP + REST | markdown files at `ciq/docs/jira/tickets/` (read-only) | launchd `com.praspr.sb-jira` |
 | **sb-web** | `127.0.0.1:5173` | HTTP (dev) | mocks + proxied REST from the two services | `npm run dev` |
 
@@ -61,8 +61,10 @@ with common dev services.
 serves Streamable HTTP at `/mcp` and compatibility SSE at `/sse`, and exposes
 operational readiness at `GET /health` and in the dashboard at `/status`.
 The database defaults to `~/.local/share/sb/core.db` (WAL, foreign keys, a
-5-second busy timeout, and a versioned migration table). Step 1 stores
-metadata only.
+5-second busy timeout, and a versioned migration table). Todo tools are
+mounted in-process under their original names (`todo_list`, `todo_add`,
+`todo_complete`, and the rest). The dashboard Todos page calls them through
+`/proxy/mcp`.
 
 ```bash
 cd sb/services/core

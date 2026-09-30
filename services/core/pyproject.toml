@@ -8,6 +8,7 @@ dependencies = [
     "fastmcp>=4.0,<5",
     "pydantic-settings>=2.5",
     "pyyaml>=6",
+    "sb-todos",
     "uvicorn[standard]>=0.34",
 ]
 
@@ -26,3 +27,6 @@ packages = ["src/sb_core"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+
+[tool.uv.sources]
+sb-todos = { path = "../todos", editable = true }

@@ -95,17 +95,19 @@ def test_migrations_are_concurrency_safe(tmp_path: Path) -> None:
     conn.close()
 
 
-def test_system_status_is_the_only_foundation_surface() -> None:
-    async def inspect() -> None:
+def test_system_status_reports_readiness() -> None:
+    async def inspect() -> set[str]:
         tools = await mcp.list_tools()
         prompts = await mcp.list_prompts()
         resources = await mcp.list_resources()
+        names = {tool.name for tool in tools}
 
-        assert [tool.name for tool in tools] == ["system_status"]
+        assert "system_status" in names
         assert prompts == []
         assert resources == []
+        return names
 
-    asyncio.run(inspect())
+    names = asyncio.run(inspect())
 
     status = asyncio.run(system_status())
     assert status["status"] == "ok"
@@ -113,7 +115,9 @@ def test_system_status_is_the_only_foundation_surface() -> None:
     assert status["database"]["ready"] is True
     assert status["database"]["schema_version"] == 1
     assert status["database"]["path"] == "core.db"
-    assert status["counts"] == {"tools": 1, "prompts": 0, "resources": 0}
+    assert status["counts"]["tools"] == len(names)
+    assert status["counts"]["prompts"] == 0
+    assert status["counts"]["resources"] == 0
     assert str(Path.home()) not in json.dumps(status)
 
 

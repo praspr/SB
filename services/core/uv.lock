@@ -1134,6 +1134,7 @@ dependencies = [
     { name = "fastmcp" },
     { name = "pydantic-settings" },
     { name = "pyyaml" },
+    { name = "sb-todos" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -1148,11 +1149,37 @@ requires-dist = [
     { name = "fastmcp", specifier = ">=4.0,<5" },
     { name = "pydantic-settings", specifier = ">=2.5" },
     { name = "pyyaml", specifier = ">=6" },
+    { name = "sb-todos", editable = "../todos" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.34" },
 ]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=8.3" }]
+
+[[package]]
+name = "sb-todos"
+version = "0.1.0"
+source = { editable = "../todos" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "fastmcp" },
+    { name = "pydantic" },
+    { name = "pydantic-settings" },
+    { name = "uvicorn", extra = ["standard"] },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "fastmcp", specifier = ">=2.0" },
+    { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.28" },
+    { name = "pydantic", specifier = ">=2.9" },
+    { name = "pydantic-settings", specifier = ">=2.5" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
+    { name = "uvicorn", extras = ["standard"], specifier = ">=0.34" },
+]
+provides-extras = ["dev"]
 
 [[package]]
 name = "secretstorage"

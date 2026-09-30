@@ -21,14 +21,12 @@ def _configure_connection(conn: sqlite3.Connection) -> None:
 
 def run_migrations(conn: sqlite3.Connection) -> None:
     """Bootstrap schema_migrations table and apply any unapplied migrations."""
-    conn.execute(
-        """
+    conn.execute("""
         CREATE TABLE IF NOT EXISTS schema_migrations (
           version INTEGER PRIMARY KEY,
           applied_at TEXT NOT NULL DEFAULT (datetime('now'))
         )
-        """
-    )
+        """)
     conn.commit()
 
     applied = {
@@ -64,7 +62,8 @@ def run_migrations(conn: sqlite3.Connection) -> None:
 def connect(db_path: Path) -> sqlite3.Connection:
     """Open a new connection to the given path, ensuring parent dirs exist."""
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(db_path), check_same_thread=False)
+    # Default check_same_thread=True: a connection stays on the thread that opened it.
+    conn = sqlite3.connect(str(db_path))
     _configure_connection(conn)
     run_migrations(conn)
     return conn

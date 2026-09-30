@@ -1,14 +1,28 @@
-"""FastMCP tool wrappers around the shared handler functions."""
+"""FastMCP tool wrappers around the shared handler functions.
+
+Each tool opens its own fresh SQLite connection (per operation) and closes it,
+rather than sharing a process-wide singleton.  This is safe for concurrent MCP
+callers under WAL and never closes a connection owned by another caller.
+"""
 
 from __future__ import annotations
+
+from contextlib import closing
 
 from fastmcp import FastMCP
 
 from . import handlers
-from .db import get_conn
+from .db import connect
 from .models import TodoCreate, TodoUpdate
 
 mcp: FastMCP = FastMCP("sb-todos")
+
+
+def _open_conn():
+    """Open a fresh, self-owned connection to the configured todos DB."""
+    from .config import settings
+
+    return connect(settings.db_path)
 
 
 @mcp.tool()
@@ -20,19 +34,19 @@ def todo_list(
     limit: int = 100,
 ) -> list[dict]:
     """List todos with optional filters. status: open|completed|all."""
-    conn = get_conn()
-    todos = handlers.list_todos(
-        conn, status=status, priority=priority, domain=domain, tag=tag, limit=limit
-    )
-    return [t.model_dump() for t in todos]
+    with closing(_open_conn()) as conn:
+        todos = handlers.list_todos(
+            conn, status=status, priority=priority, domain=domain, tag=tag, limit=limit
+        )
+        return [t.model_dump() for t in todos]
 
 
 @mcp.tool()
 def todo_get(todo_id: int) -> dict | None:
     """Fetch a single todo by id. Returns null if not found."""
-    conn = get_conn()
-    todo = handlers.get_todo(conn, todo_id)
-    return todo.model_dump() if todo else None
+    with closing(_open_conn()) as conn:
+        todo = handlers.get_todo(conn, todo_id)
+        return todo.model_dump() if todo else None
 
 
 @mcp.tool()
@@ -49,7 +63,6 @@ def todo_add(
 ) -> dict:
     """Create a new todo. If external_source/external_ref match an existing
     todo, that todo is updated instead (idempotent upsert)."""
-    conn = get_conn()
     data = TodoCreate(
         title=title,
         description=description,
@@ -61,24 +74,25 @@ def todo_add(
         external_source=external_source,
         external_ref=external_ref,
     )
-    todo = handlers.add_todo(conn, data)
-    return todo.model_dump()
+    with closing(_open_conn()) as conn:
+        todo = handlers.add_todo(conn, data)
+        return todo.model_dump()
 
 
 @mcp.tool()
 def todo_complete(todo_id: int) -> dict:
     """Mark a todo as completed."""
-    conn = get_conn()
-    todo = handlers.complete_todo(conn, todo_id)
-    return todo.model_dump()
+    with closing(_open_conn()) as conn:
+        todo = handlers.complete_todo(conn, todo_id)
+        return todo.model_dump()
 
 
 @mcp.tool()
 def todo_uncomplete(todo_id: int) -> dict:
     """Mark a completed todo as not completed."""
-    conn = get_conn()
-    todo = handlers.uncomplete_todo(conn, todo_id)
-    return todo.model_dump()
+    with closing(_open_conn()) as conn:
+        todo = handlers.uncomplete_todo(conn, todo_id)
+        return todo.model_dump()
 
 
 @mcp.tool()
@@ -93,7 +107,6 @@ def todo_update(
     domain: str | None = None,
 ) -> dict:
     """Update the given fields of a todo. Only provided fields are changed."""
-    conn = get_conn()
     data = TodoUpdate(
         title=title,
         description=description,
@@ -103,21 +116,22 @@ def todo_update(
         tags=tags,
         domain=domain,
     )
-    todo = handlers.update_todo(conn, todo_id, data)
-    return todo.model_dump()
+    with closing(_open_conn()) as conn:
+        todo = handlers.update_todo(conn, todo_id, data)
+        return todo.model_dump()
 
 
 @mcp.tool()
 def todo_delete(todo_id: int) -> dict:
     """Delete a todo by id. Returns {"deleted": bool, "id": int}."""
-    conn = get_conn()
-    deleted = handlers.delete_todo(conn, todo_id)
-    return {"deleted": deleted, "id": todo_id}
+    with closing(_open_conn()) as conn:
+        deleted = handlers.delete_todo(conn, todo_id)
+        return {"deleted": deleted, "id": todo_id}
 
 
 @mcp.tool()
 def todo_search(query: str, limit: int = 20) -> list[dict]:
     """Search todos by title/description substring match."""
-    conn = get_conn()
-    todos = handlers.search_todos(conn, query, limit=limit)
-    return [t.model_dump() for t in todos]
+    with closing(_open_conn()) as conn:
+        todos = handlers.search_todos(conn, query, limit=limit)
+        return [t.model_dump() for t in todos]

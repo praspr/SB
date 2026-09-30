@@ -1,8 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  mockJiraTickets,
   mockMeetings,
-  mockTasks,
   mockWebexMessages,
   mockWebexSpaces,
   type JiraPriority,
@@ -10,6 +8,7 @@ import {
   type JiraTicket,
   type Task,
 } from './mock-data'
+import { callTool } from './mcp'
 
 const DELAY = 200
 
@@ -28,7 +27,7 @@ function isToday(iso?: string): boolean {
   )
 }
 
-// ---- Tasks (real data via sb-todos service :8788 proxied at /proxy/todos) ----
+// ---- Tasks (real data via the unified sb MCP) ----
 
 type SbTodo = {
   id: number
@@ -67,11 +66,35 @@ function todoToTask(t: SbTodo): Task {
   }
 }
 
-async function fetchTasks(): Promise<Task[]> {
-  const res = await fetch('/proxy/todos/api/todos?status=all')
-  if (!res.ok) throw new Error(`sb-todos ${res.status}`)
-  const raw: SbTodo[] = await res.json()
+export async function fetchTasks(): Promise<Task[]> {
+  const raw = await callTool<SbTodo[]>('todo_list', { status: 'all' })
   return raw.map(todoToTask)
+}
+
+export function markTaskCompleted(tasks: Task[] | undefined, taskId: number): Task[] | undefined {
+  return tasks?.map((task) => (task.id === taskId ? { ...task, is_completed: true } : task))
+}
+
+export function restoreSnapshots<T>(
+  queryClient: QueryClient,
+  previous: Array<[readonly unknown[], T | undefined]> | undefined,
+): void {
+  previous?.forEach(([key, data]) => {
+    queryClient.setQueryData(key, data)
+  })
+}
+
+export async function createTask(input: {
+  title: string
+  priority: Task['priority']
+  domain: Task['domain']
+}): Promise<Task> {
+  const raw = await callTool<SbTodo>('todo_add', {
+    title: input.title,
+    priority: input.priority,
+    domain: input.domain,
+  })
+  return todoToTask(raw)
 }
 
 export function useTasks() {
@@ -101,22 +124,19 @@ export function useCompleteTask() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (taskId: number) => {
-      const res = await fetch(`/proxy/todos/api/todos/${taskId}/complete`, { method: 'POST' })
-      if (!res.ok) throw new Error(`sb-todos complete ${res.status}`)
+      await callTool<SbTodo>('todo_complete', { todo_id: taskId })
       return taskId
     },
     onMutate: async (taskId: number) => {
       await queryClient.cancelQueries({ queryKey: ['tasks'] })
       const previous = queryClient.getQueriesData<Task[]>({ queryKey: ['tasks'] })
       queryClient.setQueriesData<Task[]>({ queryKey: ['tasks'] }, (old) =>
-        old?.map((t) => (t.id === taskId ? { ...t, is_completed: true } : t))
+        markTaskCompleted(old, taskId)
       )
       return { previous }
     },
     onError: (_err, _taskId, context) => {
-      context?.previous.forEach(([key, data]) => {
-        queryClient.setQueryData(key, data)
-      })
+      restoreSnapshots(queryClient, context?.previous)
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
@@ -127,20 +147,7 @@ export function useCompleteTask() {
 export function useAddTask() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (input: { title: string; priority: Task['priority']; domain: Task['domain'] }) => {
-      const res = await fetch('/proxy/todos/api/todos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: input.title,
-          priority: input.priority,
-          domain: input.domain,
-        }),
-      })
-      if (!res.ok) throw new Error(`sb-todos add ${res.status}`)
-      const raw: SbTodo = await res.json()
-      return todoToTask(raw)
-    },
+    mutationFn: createTask,
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
     },
@@ -187,7 +194,7 @@ export function useWebexSpaces() {
   return useQuery({ queryKey: ['webex', 'spaces'], queryFn: fetchWebexSpaces })
 }
 
-// ---- JIRA (real data via sb-jira service :8789 proxied at /proxy/jira) ----
+// ---- JIRA (real data via sb-jira service proxied at /proxy/jira) ----
 
 export function useJiraTickets(filters?: {
   status?: JiraStatus | 'all'

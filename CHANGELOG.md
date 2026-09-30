@@ -9,3 +9,4 @@
 ### Added
 
 - Scaffold `sb-core` on `127.0.0.1:8787` with a metadata-only SQLite schema, `system_status`, `/health`, and a `/status` page. Domain REST routes stay absent. Launchd plist is prepared; login cutover is documented and not applied.
+- Mount the eight todo tools in-process on the same MCP, with a fresh SQLite connection per call, and point the Todos UI at that client. The standalone todos REST app and launchd plist are removed from the repo.
