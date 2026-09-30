@@ -78,7 +78,7 @@ export function TodosPage() {
   }, [importPriority, importStatuses, jiraTickets.data])
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="space-y-6">
       {toast ? <div className="rounded-md border border-success/40 bg-success/10 p-3 text-13 text-success">{toast}</div> : null}
       <div className="flex flex-wrap items-center gap-3">
         <div className="min-w-[280px] flex-1">

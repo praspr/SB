@@ -20,7 +20,7 @@ export function LandingPage() {
   const attentionCount = (attention.data?.length ?? 0) + blockedTickets.length
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="space-y-6">
       <section className="flex flex-wrap items-end justify-between gap-4 border-b border-border-subtle pb-5">
         <div>
           <h1 className="text-24 font-semibold tracking-tight text-text-primary">Your day at a glance</h1>

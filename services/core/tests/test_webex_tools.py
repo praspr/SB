@@ -6,7 +6,7 @@ from sb_core.adapters.webex import run as index_webex
 from sb_core.config import settings
 from sb_core.store.db import connect
 from sb_core.store.signals import search_signals
-from sb_core.webex_store import replace_mirror
+from sb_core.webex_store import get_identity, list_messages, replace_mirror
 from sb_core.webex_tools import summarize_webex_space, sync_webex, webex_status
 
 
@@ -151,3 +151,130 @@ def test_webex_signals_are_idempotent() -> None:
         assert len(signals) == 2
     finally:
         conn.close()
+
+
+class _IdentityFakeClient(_FakeClient):
+    """Same fixtures as _FakeClient, plus get_me/get_message for identity and
+    thread-reply enrichment coverage."""
+
+    def __init__(self, *, me_email: str = "me@example.com", parent_sender: str = "me@example.com") -> None:
+        super().__init__()
+        self.me_email = me_email
+        self.parent_sender = parent_sender
+        self.get_me_calls = 0
+        self.get_message_calls: list[str] = []
+
+    def get_me(self) -> dict:
+        self.get_me_calls += 1
+        return {"email": self.me_email, "display_name": "Me Myself"}
+
+    def get_message(self, message_id: str) -> dict | None:
+        self.get_message_calls.append(message_id)
+        return {"id": message_id, "personEmail": self.parent_sender, "personName": "Parent Sender"}
+
+
+def test_sync_captures_identity_on_first_sync(monkeypatch) -> None:
+    fake = _IdentityFakeClient()
+    monkeypatch.setattr("sb_core.webex_tools.access_token", lambda: "session")
+    monkeypatch.setattr("sb_core.webex_tools.McpClient", lambda token: fake)
+
+    sync_webex()
+
+    conn = connect(settings.db_path)
+    try:
+        identity = get_identity(conn)
+    finally:
+        conn.close()
+    assert identity is not None
+    assert identity["email"] == "me@example.com"
+    assert fake.get_me_calls == 1
+
+
+def test_sync_does_not_refetch_identity_once_cached(monkeypatch) -> None:
+    conn = connect(settings.db_path)
+    try:
+        from sb_core.webex_store import set_identity
+
+        set_identity(conn, "already-cached@example.com", "Cached Person")
+    finally:
+        conn.close()
+
+    fake = _IdentityFakeClient()
+    monkeypatch.setattr("sb_core.webex_tools.access_token", lambda: "session")
+    monkeypatch.setattr("sb_core.webex_tools.McpClient", lambda token: fake)
+
+    sync_webex()
+
+    assert fake.get_me_calls == 0
+
+
+def test_sync_enriches_reply_to_me_from_parent_lookup(monkeypatch) -> None:
+    fake = _IdentityFakeClient(me_email="me@example.com", parent_sender="me@example.com")
+
+    class _ReplyClient(_IdentityFakeClient):
+        def call_tool(self, name: str, arguments: dict | None = None) -> dict:
+            if name == "list_messages":
+                return {
+                    "items": [
+                        {
+                            "id": "msg-reply",
+                            "roomId": "s1",
+                            "text": "Sounds good",
+                            "personDisplayName": "Ada",
+                            "parentId": "parent-1",
+                            "created": "2026-09-30T14:05:00Z",
+                        }
+                    ]
+                }
+            return super().call_tool(name, arguments)
+
+    reply_client = _ReplyClient(me_email="me@example.com", parent_sender="me@example.com")
+    monkeypatch.setattr("sb_core.webex_tools.access_token", lambda: "session")
+    monkeypatch.setattr("sb_core.webex_tools.McpClient", lambda token: reply_client)
+
+    sync_webex()
+
+    conn = connect(settings.db_path)
+    try:
+        rows = list_messages(conn)
+    finally:
+        conn.close()
+    reply_row = next(row for row in rows if row["id"] == "msg-reply")
+    assert reply_row["parent_message_id"] == "parent-1"
+    assert reply_row["parent_sender_email"] == "me@example.com"
+    assert reply_row["is_reply_to_me"] == 1
+    assert reply_client.get_message_calls == ["parent-1"]
+
+
+def test_sync_does_not_mark_reply_to_me_when_parent_sender_differs(monkeypatch) -> None:
+    class _ReplyClient(_IdentityFakeClient):
+        def call_tool(self, name: str, arguments: dict | None = None) -> dict:
+            if name == "list_messages":
+                return {
+                    "items": [
+                        {
+                            "id": "msg-reply-2",
+                            "roomId": "s1",
+                            "text": "Thanks",
+                            "personDisplayName": "Ada",
+                            "parentId": "parent-2",
+                            "created": "2026-09-30T14:10:00Z",
+                        }
+                    ]
+                }
+            return super().call_tool(name, arguments)
+
+    reply_client = _ReplyClient(me_email="me@example.com", parent_sender="someone-else@example.com")
+    monkeypatch.setattr("sb_core.webex_tools.access_token", lambda: "session")
+    monkeypatch.setattr("sb_core.webex_tools.McpClient", lambda token: reply_client)
+
+    sync_webex()
+
+    conn = connect(settings.db_path)
+    try:
+        rows = list_messages(conn)
+    finally:
+        conn.close()
+    reply_row = next(row for row in rows if row["id"] == "msg-reply-2")
+    assert reply_row["parent_sender_email"] == "someone-else@example.com"
+    assert reply_row["is_reply_to_me"] == 0

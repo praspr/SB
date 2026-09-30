@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { RefreshCw, Loader2 } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { useJiraTickets, useSyncJira, useJiraStatus, useTrackJira, useUntrackJira } from '@/lib/queries'
@@ -6,6 +6,7 @@ import { TrackJiraForm } from '@/components/jira/TrackJiraForm'
 import { JiraFilterBar, JIRA_PROJECTS, type JiraPriorityFilter, type JiraStatusFilter } from '@/components/jira/JiraFilterBar'
 import { JiraTicketList } from '@/components/jira/JiraTicketList'
 import { Button } from '@/components/ui/button'
+import { paginateJira, summarizeJira } from '@/lib/jira-page'
 
 export function JirasPage() {
   const [searchParams] = useSearchParams()
@@ -19,6 +20,7 @@ export function JirasPage() {
   const [trackValue, setTrackValue] = useState('')
   const [trackMsg, setTrackMsg] = useState<string | null>(null)
   const [trackTone, setTrackTone] = useState<'ok' | 'error' | null>(null)
+  const [page, setPage] = useState(1)
 
   const filters = useMemo(
     () => ({
@@ -35,6 +37,12 @@ export function JirasPage() {
   const syncMutation = useSyncJira()
   const trackMutation = useTrackJira()
   const untrackMutation = useUntrackJira()
+  const stats = useMemo(() => summarizeJira(tickets ?? []), [tickets])
+  const paged = useMemo(() => paginateJira(tickets ?? [], page), [page, tickets])
+
+  useEffect(() => {
+    setPage(1)
+  }, [status, priority, projects, q])
 
   async function handleRefresh() {
     setSyncMsg(null)
@@ -71,18 +79,7 @@ export function JirasPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-20 font-semibold text-text-primary">JIRAs</h1>
-          <p className="mt-1 text-13 text-text-secondary">
-            Local mirror at ciq/docs/jira/tickets
-            {svcStatus ? ` · ${svcStatus.tickets_count} tickets` : ''}
-            {svcStatus?.last_sync_at ? ` · last sync ${svcStatus.last_sync_at}` : ''}
-          </p>
-          {svcStatus?.atlassian_reachable === false && svcStatus.atlassian_error ? (
-            <p className="mt-1 text-12 text-text-muted">{svcStatus.atlassian_error}</p>
-          ) : null}
-        </div>
+      <div className="flex flex-wrap items-center justify-end gap-3">
         <div className="flex items-center gap-2">
           {syncMsg && <span className="text-12 text-text-secondary">{syncMsg}</span>}
           <Button variant="secondary" onClick={handleRefresh} disabled={syncMutation.isPending}>
@@ -90,6 +87,23 @@ export function JirasPage() {
             Refresh from Atlassian
           </Button>
         </div>
+      </div>
+      {svcStatus?.atlassian_reachable === false && svcStatus.atlassian_error ? (
+        <p className="text-12 text-text-muted">{svcStatus.atlassian_error}</p>
+      ) : null}
+
+      <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-border-subtle bg-bg-panel/60 sm:grid-cols-4">
+        {[
+          { label: 'Matching', value: stats.total, tone: 'text-accent-300' },
+          { label: 'Open', value: stats.open, tone: 'text-info' },
+          { label: 'In progress', value: stats.inProgress, tone: 'text-warning' },
+          { label: 'Blocked', value: stats.blocked, tone: 'text-danger' },
+        ].map((item) => (
+          <div key={item.label} className="border-b border-border-subtle px-4 py-3 last:border-0 sm:border-b-0 sm:border-r sm:last:border-r-0">
+            <div className={`text-18 font-semibold tabular ${item.tone}`}>{item.value}</div>
+            <div className="text-11 uppercase tracking-[0.12em] text-text-muted">{item.label}</div>
+          </div>
+        ))}
       </div>
 
       <TrackJiraForm
@@ -118,7 +132,7 @@ export function JirasPage() {
       )}
 
       <JiraTicketList
-        tickets={tickets}
+        tickets={isLoading ? undefined : paged.items}
         isLoading={isLoading}
         onUntrack={(key) => {
           void untrackMutation.mutateAsync(key).then(() => {
@@ -128,11 +142,23 @@ export function JirasPage() {
         }}
       />
 
-      <p className="text-12 text-text-muted">
-        Same tickets as ciq/docs/jira/README.md
-        {status === 'active' ? ' · closed tickets hidden' : ''} · showing {tickets?.length ?? 0}
-        {svcStatus?.tickets_count != null ? ` of ${svcStatus.tickets_count}` : ''} · pull-only Atlassian sync
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3 text-13 text-text-secondary">
+        <span className="tabular">
+          {paged.start}–{paged.end} of {stats.total}
+          {svcStatus ? ` · ${svcStatus.tickets_count} in the local mirror` : ''}
+          {svcStatus?.last_sync_at ? ` · synced ${svcStatus.last_sync_at}` : ''}
+          {status === 'active' ? ' · closed hidden' : ''}
+        </span>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={() => setPage((current) => current - 1)} disabled={paged.page <= 1}>
+            Previous
+          </Button>
+          <span className="tabular">Page {paged.page} of {paged.pages}</span>
+          <Button variant="secondary" onClick={() => setPage((current) => current + 1)} disabled={paged.page >= paged.pages}>
+            Next
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }

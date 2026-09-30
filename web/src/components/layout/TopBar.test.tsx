@@ -9,12 +9,14 @@ vi.mock('@/components/landing/UsageStats', () => ({
 describe('top bar', () => {
   it('shows the system clock and AI usage beside the page actions', () => {
     const html = renderToStaticMarkup(
-      <TopBar now={new Date(2026, 9, 1, 0, 24)} />,
+      <TopBar title="JIRAs" subtitle="Assigned tickets across your projects" now={new Date(2026, 9, 1, 0, 24)} />,
     )
 
     expect(html).toContain('justify-self-center')
     expect(html).toContain('Thursday, October 1 · 12:24 AM')
     expect(html).toContain('Usage metrics')
+    expect(html).toContain('JIRAs')
+    expect(html).toContain('Assigned tickets across your projects')
     expect(html).not.toContain('sb dashboard')
     expect(html).not.toContain('Add todo')
     expect(html).not.toContain('Command palette')

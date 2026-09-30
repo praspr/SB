@@ -17,7 +17,14 @@ from sb_webex.client import (
 from sb_webex.normalize import attention, meetings, messages, readable_tools, spaces
 
 from . import llm
-from .webex_store import list_meetings, list_messages, list_spaces, replace_mirror
+from .webex_store import (
+    get_identity,
+    list_meetings,
+    list_messages,
+    list_spaces,
+    replace_mirror,
+    set_identity,
+)
 
 mcp = FastMCP(
     "sb-webex",
@@ -56,6 +63,26 @@ def _tool_error(payload: object) -> str | None:
     return None
 
 
+def _ensure_identity(conn, client: McpClient) -> str | None:
+    """Return the cached "me" email, fetching and persisting it once if the
+    identity table is empty. Never raises -- a failed lookup just means
+    reply-to-me enrichment stays off for this sync."""
+    existing = get_identity(conn)
+    if existing is not None:
+        return str(existing["email"]) or None
+    get_me = getattr(client, "get_me", None)
+    if get_me is None:
+        return None
+    try:
+        me = get_me()
+    except Exception:  # noqa: BLE001
+        return None
+    if not me or not me.get("email"):
+        return None
+    set_identity(conn, str(me["email"]), str(me.get("display_name") or ""))
+    return str(me["email"])
+
+
 def _pull(client: McpClient) -> dict:
     catalog = readable_tools(client.list_tools())
     errors: list[str] = []
@@ -73,6 +100,12 @@ def _pull(client: McpClient) -> dict:
     space_rows = (
         spaces(client.call_tool(catalog["space"])) if "space" in catalog else []
     )
+    conn = _conn()
+    try:
+        me_email = _ensure_identity(conn, client)
+    finally:
+        conn.close()
+
     message_rows: list[dict] = []
     if "message" in catalog and space_rows:
         room_ids = [space["id"] for space in space_rows[:15]]
@@ -83,7 +116,9 @@ def _pull(client: McpClient) -> dict:
         error = _tool_error(payload)
         if error:
             errors.append(error)
-        message_rows = messages(payload)
+        message_rows = messages(
+            payload, me_email=me_email, parent_lookup=getattr(client, "get_message", None)
+        )
         names = {space["id"]: space["name"] for space in space_rows}
         for row in message_rows:
             row["space_name"] = names.get(row.get("space_id") or "", row["space_name"])

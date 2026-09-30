@@ -72,8 +72,9 @@ def replace_mirror(
                 """
                 INSERT INTO sb_webex_messages
                   (id, space_id, space_name, sender_name, sender_email, is_dm,
-                   is_mention, is_unread, preview, occurred_at, deep_link, synced_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   is_mention, is_unread, preview, occurred_at, deep_link, synced_at,
+                   parent_message_id, parent_sender_email, is_reply_to_me)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     message["id"],
@@ -88,6 +89,9 @@ def replace_mirror(
                     message.get("occurred_at") or synced,
                     message.get("deep_link") or None,
                     synced,
+                    message.get("parent_message_id") or None,
+                    message.get("parent_sender_email") or None,
+                    int(bool(message.get("is_reply_to_me"))),
                 ),
             )
     except Exception:
