@@ -19,7 +19,7 @@ import { listMutedSpaces, muteSpace, unmuteSpace } from '@/lib/webex-mute'
 
 export function WebexPage() {
   const queryClient = useQueryClient()
-  const { data: messages, isLoading: messagesLoading, isError, error } = useWebexMessages()
+  const { isError, error } = useWebexMessages()
   const { data: spaces, isLoading: spacesLoading } = useWebexSpaces()
   const attention = useWebexAttention()
   const muted = useQuery({ queryKey: ['webex', 'muted'], queryFn: listMutedSpaces, staleTime: 30_000 })
@@ -37,8 +37,14 @@ export function WebexPage() {
 
   const mutedIds = useMemo(() => new Set((muted.data ?? []).map((space) => space.id)), [muted.data])
 
-  const dms = useMemo(() => messages?.filter((m) => m.is_dm) ?? [], [messages])
-  const mentions = useMemo(() => messages?.filter((m) => m.is_mention) ?? [], [messages])
+  // Only DMs and @mentions of the current user surface in Needs attention.
+  // Everything else (general messages, questions in group spaces, thread replies
+  // to others) is intentionally dropped — see also triage_tools._triage_kind.
+  const attentionItems = useMemo(
+    () => (attention.data ?? []).filter((message) => message.is_dm || message.is_mention),
+    [attention.data],
+  )
+
   const activeSpaces = useMemo(
     () => [...(spaces ?? [])].filter((space) => !mutedIds.has(space.id)).sort((a, b) => b.unread_count - a.unread_count),
     [mutedIds, spaces],
@@ -99,14 +105,15 @@ export function WebexPage() {
             Meetings
           </Link>
         </div>
+        <p className="mt-1 text-12 text-text-muted">Direct messages and @mentions only.</p>
         <div className="mt-4">
           {attention.isLoading ? (
             <SkeletonRow lines={3} />
-          ) : (attention.data?.length ?? 0) === 0 ? (
-            <EmptyState title="Nothing waiting" body="Mentions, direct messages, and questions show up after a sync." icon={<MessageSquare size={18} />} />
+          ) : attentionItems.length === 0 ? (
+            <EmptyState title="Nothing waiting" body="Direct messages and @mentions show up after a sync." icon={<MessageSquare size={18} />} />
           ) : (
             <div className="space-y-2">
-              {attention.data!.map((message) => (
+              {attentionItems.map((message) => (
                 <MessagePreview key={message.id} message={message} />
               ))}
             </div>
@@ -114,53 +121,7 @@ export function WebexPage() {
         </div>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[1.3fr_1fr]">
-        <div className="space-y-6">
-          <section className="rounded-xl border border-border-subtle bg-bg-panel/92 p-5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-16 font-semibold text-text-primary">Direct messages</h2>
-              <span className="rounded-full border border-border-subtle bg-black/20 px-2 py-0.5 text-12 tabular text-text-muted">
-                {dms.length}
-              </span>
-            </div>
-            <div className="mt-4">
-              {messagesLoading ? (
-                <SkeletonRow lines={3} />
-              ) : dms.length === 0 ? (
-                <EmptyState title="No DMs" body="No recent direct messages." icon={<MessageSquare size={18} />} />
-              ) : (
-                <div className="space-y-2">
-                  {dms.map((m) => (
-                    <MessagePreview key={m.id} message={m} />
-                  ))}
-                </div>
-              )}
-            </div>
-          </section>
-
-          <section className="rounded-xl border border-border-subtle bg-bg-panel/92 p-5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-16 font-semibold text-text-primary">@Mentions</h2>
-              <span className="rounded-full border border-border-subtle bg-black/20 px-2 py-0.5 text-12 tabular text-text-muted">
-                {mentions.length}
-              </span>
-            </div>
-            <div className="mt-4">
-              {messagesLoading ? (
-                <SkeletonRow lines={3} />
-              ) : mentions.length === 0 ? (
-                <EmptyState title="No mentions" body="You're not mentioned anywhere recently." icon={<MessageSquare size={18} />} />
-              ) : (
-                <div className="space-y-2">
-                  {mentions.map((m) => (
-                    <MessagePreview key={m.id} message={m} />
-                  ))}
-                </div>
-              )}
-            </div>
-          </section>
-        </div>
-
+      <div className="grid gap-6 xl:grid-cols-2">
         <div className="space-y-6">
           <section className="rounded-xl border border-border-subtle bg-bg-panel/92 p-5">
             <div className="flex items-center justify-between">
