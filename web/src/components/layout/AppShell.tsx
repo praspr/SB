@@ -4,11 +4,14 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { useUiStore } from '@/lib/store'
-import { CommandPalette } from '@/components/shared/CommandPalette'
+import { CommandPalette } from '@/components/palette/CommandPalette'
 import { AddTodoDialog } from '@/components/tasks/AddTodoDialog'
 
 const titles: Record<string, { title: string; subtitle?: string }> = {
   '/': { title: 'Today', subtitle: 'Your todos, meetings, and quick actions' },
+  '/reports': { title: 'Reports', subtitle: 'Daily, weekly, monthly, and query rollups over the ledger' },
+  '/ledger': { title: 'Ledger', subtitle: 'Append-only activity and session context across projects' },
+  '/proposals': { title: 'Proposals', subtitle: 'Review pending drafted changes before they write locally' },
   '/todos': { title: 'Todos', subtitle: 'Full task list, filterable by status and priority' },
   '/jira': { title: 'JIRAs', subtitle: 'Assigned tickets across your projects' },
   '/meetings': { title: 'Meetings', subtitle: 'Today and the next 7 days' },
