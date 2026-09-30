@@ -82,21 +82,21 @@ def _hours_since(value: str | None) -> float | None:
     return round(max(0.0, (_now() - dt).total_seconds() / 3600), 1)
 
 
-def _triage_kind(message: dict[str, Any]) -> str:
-    """Classify an attention item.
-
-    Mentions and direct messages stay distinct. Every other mirrored message
-    is kept as ``"message"`` so the inbox matches the landing-page count.
-    """
+def _triage_kind(message: dict[str, Any]) -> str | None:
+    """Classify an attention item into one of three kinds Attention shows:
+    ``"mention"``, ``"dm"``, or ``"reply-to-me"``. Everything else returns
+    None and is dropped from the inbox (see ``_decorate_attention``)."""
     if bool(message.get("is_mention")):
         return "mention"
     if bool(message.get("is_dm")):
         return "dm"
-    return "message"
+    if bool(message.get("is_reply_to_me")):
+        return "reply-to-me"
+    return None
 
 
-def _suggested_action(kind: str) -> str:
-    return "Discussed" if kind in {"mention", "dm", "question"} else "Reviewed"
+def _suggested_action(kind: str | None) -> str:
+    return "Discussed" if kind in {"mention", "dm", "reply-to-me"} else "Reviewed"
 
 
 def _title_keywords(title: str) -> list[str]:
@@ -369,9 +369,13 @@ def webex_attention_filtered(limit: int = 30) -> list[dict[str, Any]]:
 
 
 def _decorate_attention(ranked: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Decorate ranked rows with triage metadata, dropping anything that
+    isn't a mention, DM, or reply-to-me (Attention shows only those three)."""
     result: list[dict[str, Any]] = []
     for row in ranked:
         kind = _triage_kind(row)
+        if kind is None:
+            continue
         result.append(
             {
                 **row,

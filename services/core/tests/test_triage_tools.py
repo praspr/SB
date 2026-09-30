@@ -82,9 +82,11 @@ def test_webex_attention_ranked_adds_metadata(
     assert rows[0]["staleness_hours"] is not None
 
 
-def test_ranked_attention_keeps_general_messages(
+def test_ranked_attention_drops_general_messages(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """A message that is not a mention, DM, or reply-to-me is dropped from
+    the inbox entirely (Attention shows only those three kinds)."""
     core_db = tmp_path / "core.db"
     todos_db = tmp_path / "todos.db"
     connect(core_db).close()
@@ -117,8 +119,52 @@ def test_ranked_attention_keeps_general_messages(
         conn.close()
 
     rows = tt.webex_attention_ranked()
-    assert [row["id"] for row in rows] == ["msg-general"]
-    assert rows[0]["triage_kind"] == "message"
+    assert rows == []
+
+
+def test_ranked_attention_includes_reply_to_me_alone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A reply-to-me message with no mention/dm flag still qualifies for
+    Attention as its own third kind."""
+    core_db = tmp_path / "core.db"
+    todos_db = tmp_path / "todos.db"
+    connect(core_db).close()
+    from sb_todos.db import connect as connect_todos
+
+    connect_todos(todos_db).close()
+    _patch_conns(monkeypatch, core_db, todos_db)
+
+    conn = connect(core_db)
+    try:
+        replace_mirror(
+            conn,
+            meetings=[],
+            spaces=[],
+            messages=[
+                {
+                    "id": "msg-reply",
+                    "space_id": "s1",
+                    "space_name": "Team room",
+                    "sender_name": "Ada",
+                    "is_dm": False,
+                    "is_mention": False,
+                    "is_unread": True,
+                    "preview": "Sounds good",
+                    "occurred_at": "2026-09-30T09:00:00Z",
+                    "parent_message_id": "parent-1",
+                    "parent_sender_email": "me@example.com",
+                    "is_reply_to_me": True,
+                }
+            ],
+        )
+    finally:
+        conn.close()
+
+    rows = tt.webex_attention_ranked()
+    assert [row["id"] for row in rows] == ["msg-reply"]
+    assert rows[0]["triage_kind"] == "reply-to-me"
+    assert rows[0]["suggested_action_verb"] == "Discussed"
 
 
 def test_pre_meeting_context_returns_partial_matches(
