@@ -296,6 +296,24 @@ def _m9_batch(conn: sqlite3.Connection) -> None:
         """)
 
 
+def _m10_webex_threads(conn: sqlite3.Connection) -> None:
+    """Parent-message metadata for reply-to-me detection, plus the cached
+    Webex identity (phase 2c)."""
+    _add_column(conn, "sb_webex_messages", "parent_message_id", "TEXT")
+    _add_column(conn, "sb_webex_messages", "parent_sender_email", "TEXT")
+    _add_column(
+        conn, "sb_webex_messages", "is_reply_to_me", "INTEGER NOT NULL DEFAULT 0"
+    )
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS sb_webex_identity (
+          email        TEXT PRIMARY KEY,
+          display_name TEXT,
+          cached_at    TEXT NOT NULL
+        )
+        """)
+
+
 _MIGRATIONS: list[tuple[int, Callable[[sqlite3.Connection], None]]] = [
     (1, _m1_metadata),
     (2, _m2_skills),
@@ -306,6 +324,7 @@ _MIGRATIONS: list[tuple[int, Callable[[sqlite3.Connection], None]]] = [
     (7, _m7_webex),
     (8, _m8_ledger),
     (9, _m9_batch),
+    (10, _m10_webex_threads),
 ]
 
 _REQUIRED_COLUMNS: dict[str, dict[str, str]] = {
@@ -321,6 +340,11 @@ _REQUIRED_COLUMNS: dict[str, dict[str, str]] = {
     },
     "sb_webex_spaces": {
         "muted": "INTEGER NOT NULL DEFAULT 0",
+    },
+    "sb_webex_messages": {
+        "parent_message_id": "TEXT",
+        "parent_sender_email": "TEXT",
+        "is_reply_to_me": "INTEGER NOT NULL DEFAULT 0",
     },
 }
 
