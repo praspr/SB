@@ -7,7 +7,7 @@ when the OAuth server offers write scopes.
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, Callable, Optional
 
 _WRITE_TOOL = re.compile(
     r"send|create|update|delete|post|reply|write|invite|remove|schedule",
@@ -132,7 +132,25 @@ def _message_items(payload: Any) -> list[dict]:
     return _items(payload)
 
 
-def messages(payload: Any, *, space_name: str = "") -> list[dict]:
+def messages(
+    payload: Any,
+    *,
+    space_name: str = "",
+    me_email: Optional[str] = None,
+    parent_lookup: Optional[Callable[[str], Optional[dict]]] = None,
+) -> list[dict]:
+    """Normalize a Webex messages payload.
+
+    When ``me_email`` and ``parent_lookup`` are both supplied, each message
+    with a ``parentId`` is enriched with ``parent_message_id`` (always, when
+    present) and, if the parent lookup succeeds and its sender matches
+    ``me_email``, ``parent_sender_email`` and ``is_reply_to_me=True``. A
+    failed or missing lookup simply leaves those two fields unset -- it never
+    raises and never blocks the surrounding sync. With no ``me_email``/
+    ``parent_lookup``, every row's thread fields stay at their defaults
+    (``parent_message_id=None``, ``parent_sender_email=None``,
+    ``is_reply_to_me=False``), matching pre-phase-2c behavior exactly.
+    """
     rows = []
     for item in _message_items(payload):
         message_id = _first(item, "id", "messageId")
@@ -140,6 +158,21 @@ def messages(payload: Any, *, space_name: str = "") -> list[dict]:
             continue
         text = _first(item, "text", "preview", "markdown", "content")
         mentions = item.get("mentionedPeople") or item.get("mentions") or []
+
+        parent_id = _first(item, "parentId", "parent_id") or None
+        parent_sender_email: Optional[str] = None
+        is_reply_to_me = False
+        if parent_id and parent_lookup is not None:
+            try:
+                parent = parent_lookup(parent_id)
+            except Exception:  # noqa: BLE001 -- a parent-lookup failure must never break sync
+                parent = None
+            if parent:
+                sender = str(parent.get("personEmail") or "") or None
+                parent_sender_email = sender
+                if me_email and sender and sender == me_email:
+                    is_reply_to_me = True
+
         rows.append(
             {
                 "id": message_id,
@@ -162,6 +195,9 @@ def messages(payload: Any, *, space_name: str = "") -> list[dict]:
                 "preview": " ".join(text.split())[:180],
                 "occurred_at": _first(item, "created", "occurred_at", "published"),
                 "deep_link": _first(item, "webUrl", "url", "deep_link"),
+                "parent_message_id": parent_id,
+                "parent_sender_email": parent_sender_email,
+                "is_reply_to_me": is_reply_to_me,
             }
         )
     return rows
