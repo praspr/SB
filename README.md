@@ -36,23 +36,20 @@ with common dev services.
 
 ```
 ┌─── Coding Harnesses (Cursor · OpenCode · Claude Code) ──────────┐
-│  Consume both MCP servers as tools                                │
-└─────────┬────────────────────────────────────┬───────────────────┘
-          │ MCP HTTP                            │ MCP HTTP
-          ▼                                     ▼
-┌─── sb-todos :58788 ──────────┐   ┌─── sb-jira :58789 (READ-ONLY) ──┐
-│  Python · FastMCP + FastAPI  │   │  Python · FastMCP + FastAPI      │
-│  SQLite at                    │   │  Reads ciq/docs/jira/tickets/    │
-│  ~/.local/share/sb/todos.db   │   │  Refresh pulls Atlassian → files │
-│                               │   │  Never writes to Atlassian       │
-└──────────▲────────────────────┘   └───────────▲──────────────────────┘
-           │ REST via /proxy/todos              │ REST via /proxy/jira
-           │                                    │
-┌──────────┴────────────────────────────────────┴─────────────────────┐
-│  sb-web :5173  (Vite + React + TypeScript + Tailwind)                │
-│    Landing · Todos · JIRAs · Meetings · Webex                        │
-│    Linear-dense UI · dark mode · ⌘K palette · ⌘N add-todo            │
-└──────────────────────────────────────────────────────────────────────┘
+│  One MCP server named sb                                          │
+└────────────────────────────┬──────────────────────────────────────┘
+                             │ HTTP  /mcp  or  /sse
+                             ▼
+┌─── sb-core :8787  (127.0.0.1) ───────────────────────────────────┐
+│  Python · FastMCP + FastAPI                                       │
+│  core.db  ·  todos.db  ·  local JIRA markdown (pull-only)         │
+│  skills · signals · plan · wrap · standup                         │
+└────────────────────────────▲──────────────────────────────────────┘
+                             │ /proxy/mcp
+┌────────────────────────────┴──────────────────────────────────────┐
+│  sb-web :5173  (Vite + React + TypeScript + Tailwind)             │
+│  Status · Skills · Signals · Today · Wrap · Standup · Todos · JIRA │
+└────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Unified core
@@ -141,44 +138,17 @@ npm install     # first time only
 npm run dev     # → http://localhost:5173
 ```
 
-### Services (both auto-start on login via launchd)
+### Core service
 
-The services live at `~/Library/LaunchAgents/` and boot with `RunAtLoad=true`
-and `KeepAlive=true`, so they're up automatically after any reboot.
-
-To install / re-install from scratch:
-
-```bash
-# sb-todos
-cd sb/services/todos && uv sync --extra dev
-cp launchd/com.praspr.sb-todos.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.praspr.sb-todos.plist
-
-# sb-jira
-cd sb/services/jira && uv sync --extra dev
-cp launchd/com.praspr.sb-jira.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.praspr.sb-jira.plist
-```
-
-Health checks:
-
-```bash
-launchctl list | grep sb-
-curl http://127.0.0.1:58788/health   # sb-todos
-curl http://127.0.0.1:58789/health   # sb-jira
-tail -f /tmp/sb-todos.err.log        # or .out.log
-tail -f /tmp/sb-jira.stderr.log
-```
+Run `sb-core` with the commands in [Unified core](#unified-core). Login
+auto-start is the plist documented under **Cutover (prepared, not applied)**.
+Those commands are not applied by this repository. The standalone todos and
+JIRA launchd plists are no longer in the repo.
 
 ## MCP tools
 
-Both servers are already wired into three harnesses:
-
-| Harness | Config file |
-|---|---|
-| Claude Code | `~/.claude.json` → `mcpServers.sb-todos` + `sb-jira` |
-| OpenCode | `~/.config/opencode/opencode.json` → `mcp.sb-todos` + `sb-jira` |
-| Cursor | `~/.cursor/mcp.json` → `mcpServers.sb-todos` + `sb-jira` |
+One server, `sb`, is the harness entry. The cutover table above is the
+config to apply later. Do not add `sb-todos` or `sb-jira` network servers.
 
 ### sb-todos tools (write-capable)
 
