@@ -5,6 +5,7 @@ import { StatusPage } from '@/pages/StatusPage'
 import { SkillsPage } from '@/pages/SkillsPage'
 import { SignalsPage } from '@/pages/SignalsPage'
 import { TodayPage } from '@/pages/TodayPage'
+import { WrapPage } from '@/pages/WrapPage'
 import { TodosPage } from '@/pages/TodosPage'
 import { JirasPage } from '@/pages/JirasPage'
 import { MeetingsPage } from '@/pages/MeetingsPage'
@@ -20,6 +21,7 @@ export const router = createBrowserRouter([
       { path: 'skills', element: <SkillsPage /> },
       { path: 'signals', element: <SignalsPage /> },
       { path: 'today', element: <TodayPage /> },
+      { path: 'wrap', element: <WrapPage /> },
       { path: 'todos', element: <TodosPage /> },
       { path: 'jira', element: <JirasPage /> },
       { path: 'meetings', element: <MeetingsPage /> },

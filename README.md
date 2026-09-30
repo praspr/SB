@@ -78,7 +78,9 @@ Signal adapters (`todos`, `jira`, `changelog`, `git`) write canonical UTC rows
 into `sb_signals`. Search them with `search_signals` and cite `[signal:N]`.
 The dashboard shows them at `/signals`. `plan_day` ranks open todos into
 `sb_daily` plan columns without overwriting wrap. The dashboard shows that
-plan at `/today`.
+plan at `/today`. `wrap_day` writes the wrap columns and queues a local
+CHANGELOG proposal. Approval appends only a `CHANGELOG.md` under a configured
+root. The dashboard shows wraps and proposals at `/wrap`.
 
 ```bash
 cd sb/services/core

@@ -46,7 +46,7 @@ def test_database_is_ready_and_migrations_are_idempotent(tmp_path: Path) -> None
             "SELECT version FROM core_schema_migrations ORDER BY version"
         ).fetchall()
     ]
-    assert versions == [1, 2, 3, 4, 5]
+    assert versions == [1, 2, 3, 4, 5, 6]
     tables = {
         row[0]
         for row in conn.execute(
@@ -59,7 +59,7 @@ def test_database_is_ready_and_migrations_are_idempotent(tmp_path: Path) -> None
     assert "sb_sync_state" in tables
     assert "core_schema_migrations" in tables
     assert "sb_daily" in tables
-    assert "sb_proposals" not in tables
+    assert "sb_proposals" in tables
     conn.close()
 
 
@@ -88,7 +88,7 @@ def test_migrations_are_concurrency_safe(tmp_path: Path) -> None:
             "SELECT version FROM core_schema_migrations ORDER BY version"
         ).fetchall()
     ]
-    assert versions == [1, 2, 3, 4, 5]
+    assert versions == [1, 2, 3, 4, 5, 6]
     conn.close()
 
 
@@ -110,7 +110,7 @@ def test_system_status_reports_readiness() -> None:
     assert status["status"] == "ok"
     assert status["version"] == __version__
     assert status["database"]["ready"] is True
-    assert status["database"]["schema_version"] == 5
+    assert status["database"]["schema_version"] == 6
     assert status["database"]["path"] == "core.db"
     assert status["counts"]["tools"] == len(names)
     assert status["counts"]["prompts"] == prompt_count
@@ -144,7 +144,7 @@ def test_health_mcp_initialize_and_api_absence() -> None:
     assert health.status_code == 200
     body = health.json()
     assert body["database"]["ready"] is True
-    assert body["database"]["schema_version"] == 5
+    assert body["database"]["schema_version"] == 6
     assert "token" not in health.text.lower()
     assert "password" not in health.text.lower()
     assert str(Path.home()) not in health.text

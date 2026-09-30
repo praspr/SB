@@ -26,12 +26,12 @@ def _mount_domains() -> None:
     mcp.mount(todos_mcp)
     mcp.mount(jira_mcp)
     from .skills import register_skill_tools
-    from .plan_tools import mcp as plan_mcp
+    from .ritual_tools import mcp as ritual_mcp
     from .sync_tools import mcp as sync_mcp
 
     register_skill_tools(mcp)
     mcp.mount(sync_mcp)
-    mcp.mount(plan_mcp)
+    mcp.mount(ritual_mcp)
 
 
 _mount_domains()

@@ -115,12 +115,32 @@ def _m5_daily(conn: sqlite3.Connection) -> None:
     _add_column(conn, "sb_daily", "wrap_data", "TEXT")
 
 
+def _m6_proposals(conn: sqlite3.Connection) -> None:
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS sb_proposals (
+          id          INTEGER PRIMARY KEY AUTOINCREMENT,
+          kind        TEXT NOT NULL,
+          title       TEXT NOT NULL,
+          body        TEXT NOT NULL DEFAULT '',
+          status      TEXT NOT NULL DEFAULT 'pending',
+          signal_refs TEXT NOT NULL DEFAULT '[]',
+          created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+          decided_at  TEXT,
+          target_path TEXT,
+          updated_at  TEXT
+        )
+        """)
+    _add_column(conn, "sb_proposals", "target_path", "TEXT")
+    _add_column(conn, "sb_proposals", "updated_at", "TEXT")
+
+
 _MIGRATIONS: list[tuple[int, Callable[[sqlite3.Connection], None]]] = [
     (1, _m1_metadata),
     (2, _m2_skills),
     (3, _m3_signals),
     (4, _m4_sync_state),
     (5, _m5_daily),
+    (6, _m6_proposals),
 ]
 
 _REQUIRED_COLUMNS: dict[str, dict[str, str]] = {
@@ -129,6 +149,10 @@ _REQUIRED_COLUMNS: dict[str, dict[str, str]] = {
         "plan_data": "TEXT",
         "wrap_md": "TEXT",
         "wrap_data": "TEXT",
+    },
+    "sb_proposals": {
+        "target_path": "TEXT",
+        "updated_at": "TEXT",
     },
 }
 

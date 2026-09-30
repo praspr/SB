@@ -257,6 +257,24 @@ def find_pending_proposal(
     return _find_pending(conn, target_path=target_path, payload=payload)
 
 
+def set_proposal_status(
+    conn: sqlite3.Connection, proposal_id: int, status: str
+) -> dict:
+    """Move a proposal from ``pending`` to *status* with a conditional update.
+
+    Any other current status leaves the row unchanged and raises ``ValueError``.
+    """
+    if status not in {"executed", "rejected"}:
+        raise ValueError(f"unsupported proposal status: {status!r}")
+    changed = transition_proposal(conn, proposal_id, "pending", status)
+    if not changed:
+        raise ValueError(f"proposal {proposal_id} is not pending")
+    updated = get_proposal(conn, proposal_id)
+    if updated is None:
+        raise ValueError(f"proposal {proposal_id} not found")
+    return updated
+
+
 def transition_proposal(
     conn: sqlite3.Connection,
     proposal_id: int,
