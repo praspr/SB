@@ -95,6 +95,15 @@ export type LedgerSyncResult = {
   [key: string]: unknown
 }
 
+export type LedgerSession = {
+  session_id: string
+  started_at: string
+  agent?: string | null
+  project?: string | null
+  working_dir?: string | null
+  entry_count: number
+}
+
 export function ledgerLog(input: LedgerLogInput): Promise<LedgerLogResult> {
   return callTool<LedgerLogResult>('ledger_log', input)
 }
@@ -137,4 +146,31 @@ export function ledgerRegisterProject(input: RegisterLedgerProjectInput): Promis
 
 export function syncLedgerFromFiles(): Promise<LedgerSyncResult> {
   return callTool<LedgerSyncResult>('sync_ledger_from_files')
+}
+
+export async function ledgerSessions(limit = 20): Promise<LedgerSession[]> {
+  const rows = await ledgerSearch({ limit: Math.max(limit * 10, 200) })
+  const grouped = new Map<string, LedgerSession>()
+
+  for (const row of rows) {
+    if (!row.session_id) continue
+    const existing = grouped.get(row.session_id)
+    if (!existing) {
+      grouped.set(row.session_id, {
+        session_id: row.session_id,
+        started_at: row.ts,
+        agent: row.origin,
+        project: row.project,
+        working_dir: row.working_dir,
+        entry_count: 1,
+      })
+      continue
+    }
+    existing.entry_count += 1
+    if (row.ts < existing.started_at) existing.started_at = row.ts
+  }
+
+  return Array.from(grouped.values())
+    .sort((a, b) => b.started_at.localeCompare(a.started_at))
+    .slice(0, limit)
 }
