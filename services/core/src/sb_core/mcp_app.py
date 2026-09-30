@@ -32,6 +32,7 @@ def _mount_domains() -> None:
     from .ritual_tools import mcp as ritual_mcp
     from .sync_tools import mcp as sync_mcp
     from .triage_tools import mcp as triage_mcp
+    from .webex_mute import mcp as webex_mute_mcp
     from .webex_tools import mcp as webex_mcp
 
     register_skill_tools(mcp)
@@ -39,6 +40,7 @@ def _mount_domains() -> None:
     mcp.mount(sync_mcp)
     mcp.mount(ritual_mcp)
     mcp.mount(webex_mcp)
+    mcp.mount(webex_mute_mcp)
     mcp.mount(triage_mcp)
     mcp.mount(ledger_mcp)
     mcp.mount(reports_mcp)

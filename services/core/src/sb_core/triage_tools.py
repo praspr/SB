@@ -14,6 +14,7 @@ from fastmcp import FastMCP
 from .store import daily as daily_store
 from .store import ledger as ledger_store
 from sb_webex.normalize import attention
+from . import webex_store
 from .webex_store import list_meetings, list_messages
 
 mcp = FastMCP(
@@ -300,6 +301,30 @@ def webex_attention_ranked(limit: int = 30) -> list[dict[str, Any]]:
     finally:
         conn.close()
 
+    return _decorate_attention(ranked)
+
+
+@mcp.tool()
+def webex_attention_filtered(limit: int = 30) -> list[dict[str, Any]]:
+    """Ranked Webex attention items with messages from muted spaces removed.
+
+    Wraps the same ranking as ``webex_attention_ranked`` but excludes any
+    message whose ``space_id`` is currently muted (see ``webex_mute.py``).
+    """
+    conn = _get_conn()
+    try:
+        muted_ids = webex_store.list_muted_space_ids(conn)
+        rows = [
+            row for row in list_messages(conn) if row.get("space_id") not in muted_ids
+        ]
+        ranked = attention(rows)[: max(1, min(limit, 50))]
+    finally:
+        conn.close()
+
+    return _decorate_attention(ranked)
+
+
+def _decorate_attention(ranked: list[dict[str, Any]]) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
     for row in ranked:
         kind = _triage_kind(row)

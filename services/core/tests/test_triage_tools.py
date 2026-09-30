@@ -23,13 +23,19 @@ def _patch_conns(monkeypatch: pytest.MonkeyPatch, core_db: Path, todos_db: Path)
 
 def test_triage_tools_are_registered_and_mounted() -> None:
     names = {tool.name for tool in asyncio.run(tt.mcp.list_tools())}
-    assert {"webex_attention_ranked", "pre_meeting_context", "propose_meeting_notes"} <= names
+    assert {
+        "webex_attention_ranked",
+        "webex_attention_filtered",
+        "pre_meeting_context",
+        "propose_meeting_notes",
+    } <= names
 
     from sb_core.mcp_app import mcp as parent
 
     mounted = {tool.name for tool in asyncio.run(parent.list_tools())}
     assert "pre_meeting_context" in mounted
     assert "propose_meeting_notes" in mounted
+    assert "webex_attention_filtered" in mounted
 
 
 def test_webex_attention_ranked_adds_metadata(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -191,3 +197,56 @@ def test_propose_meeting_notes_falls_back_when_llm_unavailable(tmp_path: Path, m
         conn.close()
     assert proposals[0]["type"] == "ledger_entry"
     assert "Discussed Release review" in proposals[0]["payload"]
+
+
+def test_webex_attention_filtered_excludes_muted_spaces(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    core_db = tmp_path / "core.db"
+    todos_db = tmp_path / "todos.db"
+    connect(core_db).close()
+    from sb_todos.db import connect as connect_todos
+
+    connect_todos(todos_db).close()
+    _patch_conns(monkeypatch, core_db, todos_db)
+
+    conn = connect(core_db)
+    try:
+        replace_mirror(
+            conn,
+            meetings=[],
+            spaces=[
+                {"id": "s1", "name": "Loud room"},
+                {"id": "s2", "name": "Muted room"},
+            ],
+            messages=[
+                {
+                    "id": "msg-1",
+                    "space_id": "s1",
+                    "space_name": "Loud room",
+                    "sender_name": "Ada",
+                    "is_mention": True,
+                    "preview": "Can you check this?",
+                    "occurred_at": "2026-09-30T09:00:00Z",
+                },
+                {
+                    "id": "msg-2",
+                    "space_id": "s2",
+                    "space_name": "Muted room",
+                    "sender_name": "Bo",
+                    "is_mention": True,
+                    "preview": "Can you check this too?",
+                    "occurred_at": "2026-09-30T09:05:00Z",
+                },
+            ],
+        )
+        conn.execute("UPDATE sb_webex_spaces SET muted = 1 WHERE id = ?", ("s2",))
+        conn.commit()
+    finally:
+        conn.close()
+
+    all_rows = tt.webex_attention_ranked()
+    assert {row["id"] for row in all_rows} == {"msg-1", "msg-2"}
+
+    filtered_rows = tt.webex_attention_filtered()
+    assert {row["id"] for row in filtered_rows} == {"msg-1"}
