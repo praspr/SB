@@ -15,7 +15,10 @@ export type AttentionItem = {
   preview: string
   occurred_at: string
   deep_link?: string | null
-  triage_kind: 'mention' | 'dm' | 'question' | string
+  parent_message_id?: string | null
+  parent_sender_email?: string | null
+  is_reply_to_me?: boolean
+  triage_kind: 'mention' | 'dm' | 'reply-to-me' | 'question' | string
   staleness_hours?: number | null
   suggested_action_verb: 'Discussed' | 'Reviewed' | string
 }

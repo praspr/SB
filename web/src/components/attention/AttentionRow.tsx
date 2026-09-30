@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ExternalLink, Loader2 } from 'lucide-react'
+import { ExternalLink, Loader2, Reply } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,6 +32,11 @@ export function AttentionRow({ item, onLog }: AttentionRowProps) {
         <div className="flex flex-wrap items-center gap-2">
           <div className="text-13 font-medium text-text-primary">{item.sender_name}</div>
           <div className="text-12 text-text-muted">{item.space_name}</div>
+          {item.triage_kind === 'reply-to-me' ? (
+            <span className="flex items-center gap-1 rounded-full border border-accent-700 bg-accent-800/40 px-2 py-0.5 text-[11px] font-medium text-accent-200">
+              <Reply size={10} /> reply
+            </span>
+          ) : null}
           <div className="ml-auto text-12 text-text-muted">{new Date(item.occurred_at).toLocaleString()}</div>
         </div>
         <p className="mt-1 line-clamp-2 text-13 leading-6 text-text-secondary">{item.preview}</p>
