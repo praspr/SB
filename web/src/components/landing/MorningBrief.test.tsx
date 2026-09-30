@@ -17,6 +17,7 @@ describe('morning brief', () => {
           onDismiss={() => undefined}
           onOpen={() => undefined}
           onGenerateReport={() => undefined}
+          onCloseReport={() => undefined}
         />
       </MemoryRouter>
     )
@@ -36,6 +37,7 @@ describe('morning brief', () => {
           onDismiss={() => undefined}
           onOpen={() => undefined}
           onGenerateReport={() => undefined}
+          onCloseReport={() => undefined}
         />
       </MemoryRouter>
     )

@@ -34,6 +34,7 @@ type MorningBriefViewProps = {
   onDismiss: () => void
   onOpen: () => void
   onGenerateReport: () => void
+  onCloseReport: () => void
 }
 
 export function MorningBriefView({
@@ -50,6 +51,7 @@ export function MorningBriefView({
   onDismiss,
   onOpen,
   onGenerateReport,
+  onCloseReport,
 }: MorningBriefViewProps) {
   if (!open) {
     return (
@@ -155,7 +157,7 @@ export function MorningBriefView({
         {loading ? <div className="mt-4 text-12 text-text-muted">Refreshing the brief…</div> : null}
       </section>
 
-      <Dialog open={Boolean(reportMarkdown || reportLoading)} onOpenChange={() => undefined}>
+      <Dialog open={Boolean(reportMarkdown || reportLoading)} onOpenChange={(next) => { if (!next) onCloseReport() }}>
         <DialogContent className="max-w-2xl">
           <DialogTitle>Daily report</DialogTitle>
           <pre className="mt-4 max-h-[65vh] overflow-y-auto whitespace-pre-wrap rounded-lg border border-border-subtle bg-black/20 p-4 text-13 leading-6 text-text-secondary">
@@ -237,6 +239,7 @@ export function MorningBrief() {
       onDismiss={dismiss}
       onOpen={() => setOpen(true)}
       onGenerateReport={() => dailyReport.mutate()}
+      onCloseReport={() => dailyReport.reset()}
     />
   )
 }
