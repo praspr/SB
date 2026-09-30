@@ -1,6 +1,16 @@
 import { renderToStaticMarkup } from 'react-dom/server'
-import { describe, expect, it } from 'vitest'
-import { AttentionView } from '@/pages/AttentionPage'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { describe, expect, it, vi } from 'vitest'
+import { AttentionPage, AttentionView } from '@/pages/AttentionPage'
+
+vi.mock('@/lib/triage', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/triage')>('@/lib/triage')
+  return {
+    ...actual,
+    webexAttentionFiltered: vi.fn().mockResolvedValue([]),
+    logAttentionToLedger: vi.fn(),
+  }
+})
 
 describe('attention page', () => {
   it('shows inbox zero', () => {
@@ -39,5 +49,15 @@ describe('attention page', () => {
     expect(html).toContain('Ada')
     expect(html).toContain('Log to ledger')
     expect(html).toContain('Logged as [ledger:12]')
+  })
+
+  it('loads filtered attention for the page query', () => {
+    const client = new QueryClient()
+    const html = renderToStaticMarkup(
+      <QueryClientProvider client={client}>
+        <AttentionPage />
+      </QueryClientProvider>
+    )
+    expect(html).toContain('Attention Inbox')
   })
 })

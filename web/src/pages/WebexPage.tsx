@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Loader2, MessageSquare, RefreshCw } from 'lucide-react'
+import { Loader2, MessageSquare, RefreshCw, Volume2, VolumeX } from 'lucide-react'
 import {
   summarizeWebexSpace,
   useSyncWebex,
@@ -14,22 +15,37 @@ import { SpaceRow } from '@/components/webex/SpaceRow'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { SkeletonRow } from '@/components/shared/SkeletonRow'
 import { Button } from '@/components/ui/button'
+import { listMutedSpaces, muteSpace, unmuteSpace } from '@/lib/webex-mute'
 
 export function WebexPage() {
+  const queryClient = useQueryClient()
   const { data: messages, isLoading: messagesLoading, isError, error } = useWebexMessages()
   const { data: spaces, isLoading: spacesLoading } = useWebexSpaces()
   const attention = useWebexAttention()
+  const muted = useQuery({ queryKey: ['webex', 'muted'], queryFn: listMutedSpaces, staleTime: 30_000 })
   const status = useWebexStatus()
   const sync = useSyncWebex()
   const [spaceId, setSpaceId] = useState('')
   const [summary, setSummary] = useState('')
   const [summaryError, setSummaryError] = useState('')
+  const toggleMute = useMutation({
+    mutationFn: async ({ spaceId, muted }: { spaceId: string; muted: boolean }) => muted ? unmuteSpace(spaceId) : muteSpace(spaceId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['webex', 'muted'] })
+    },
+  })
+
+  const mutedIds = useMemo(() => new Set((muted.data ?? []).map((space) => space.id)), [muted.data])
 
   const dms = useMemo(() => messages?.filter((m) => m.is_dm) ?? [], [messages])
   const mentions = useMemo(() => messages?.filter((m) => m.is_mention) ?? [], [messages])
   const activeSpaces = useMemo(
-    () => [...(spaces ?? [])].sort((a, b) => b.unread_count - a.unread_count),
-    [spaces],
+    () => [...(spaces ?? [])].filter((space) => !mutedIds.has(space.id)).sort((a, b) => b.unread_count - a.unread_count),
+    [mutedIds, spaces],
+  )
+  const quietSpaces = useMemo(
+    () => [...(spaces ?? [])].filter((space) => mutedIds.has(space.id)).sort((a, b) => a.name.localeCompare(b.name)),
+    [mutedIds, spaces],
   )
 
   async function handleSummarize() {
@@ -161,14 +177,52 @@ export function WebexPage() {
               ) : (
                 <div className="space-y-2">
                   {activeSpaces.map((s) => (
-                    <button key={s.id} type="button" className="block w-full text-left" onClick={() => setSpaceId(s.id)}>
-                      <SpaceRow space={s} />
-                    </button>
+                    <div key={s.id} className="flex items-center gap-2">
+                      <button type="button" className="block min-w-0 flex-1 text-left" onClick={() => setSpaceId(s.id)}>
+                        <SpaceRow space={s} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleMute.mutate({ spaceId: s.id, muted: false })}
+                        className="rounded-md p-2 text-text-muted transition-colors duration-fast ease-out hover:bg-bg-elevated hover:text-text-primary"
+                        aria-label={`Mute ${s.name}`}
+                      >
+                        <VolumeX size={15} />
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}
             </div>
           </section>
+
+          {quietSpaces.length > 0 ? (
+            <section className="rounded-xl border border-border-subtle bg-bg-panel/92 p-5 opacity-75">
+              <div className="flex items-center justify-between">
+                <h2 className="text-16 font-semibold text-text-primary">Muted spaces</h2>
+                <span className="rounded-full border border-border-subtle bg-black/20 px-2 py-0.5 text-12 tabular text-text-muted">
+                  {quietSpaces.length}
+                </span>
+              </div>
+              <div className="mt-4 space-y-2">
+                {quietSpaces.map((space) => (
+                  <div key={space.id} className="flex items-center gap-2">
+                    <button type="button" className="block min-w-0 flex-1 text-left" onClick={() => setSpaceId(space.id)}>
+                      <SpaceRow space={space} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleMute.mutate({ spaceId: space.id, muted: true })}
+                      className="rounded-md p-2 text-text-muted transition-colors duration-fast ease-out hover:bg-bg-elevated hover:text-text-primary"
+                      aria-label={`Unmute ${space.name}`}
+                    >
+                      <Volume2 size={15} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           <section className="rounded-xl border border-border-subtle bg-bg-panel/92 p-5">
             <h2 className="text-16 font-semibold text-text-primary">Space summary</h2>

@@ -3,7 +3,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { Inbox } from 'lucide-react'
 import { AttentionRow } from '@/components/attention/AttentionRow'
 import { EmptyState } from '@/components/shared/EmptyState'
-import { logAttentionToLedger, webexAttentionRanked, type AttentionItem } from '@/lib/triage'
+import { logAttentionToLedger, webexAttentionFiltered, type AttentionItem } from '@/lib/triage'
 
 type ToastState = { id: number; label: string } | null
 
@@ -75,7 +75,7 @@ export function AttentionPage() {
   const [toast, setToast] = useState<ToastState>(null)
   const attention = useQuery({
     queryKey: ['triage', 'attention'],
-    queryFn: () => webexAttentionRanked(30),
+    queryFn: () => webexAttentionFiltered(30),
     staleTime: 30_000,
   })
   const log = useMutation({

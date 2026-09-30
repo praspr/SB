@@ -56,6 +56,10 @@ export function webexAttentionRanked(limit = 30): Promise<AttentionItem[]> {
   return callTool<AttentionItem[]>('webex_attention_ranked', { limit })
 }
 
+export function webexAttentionFiltered(limit = 30): Promise<AttentionItem[]> {
+  return callTool<AttentionItem[]>('webex_attention_filtered', { limit })
+}
+
 export function preMeetingContext(meetingId: string): Promise<PreMeetingContext> {
   return callTool<PreMeetingContext>('pre_meeting_context', { meeting_id: meetingId })
 }
