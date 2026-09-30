@@ -12,7 +12,7 @@
 ### Added
 
 - Redesign Today as a minimal daily focus view and Todos as a searchable, sortable, grouped productivity list with at-a-glance counts.
-- Show Copilot and Cursor usage as compact pie charts, with the full quota details on hover.
+- Show Copilot and Cursor usage as compact pie charts in the top bar, with the full quota details on hover, next to the system date and time.
 - Add prefilled, idempotent todo creation from JIRA rows, Webex attention items, and meeting todo proposals.
 - Add JIRA untracking controls that stop future refreshes while retaining the local markdown mirror.
 - Add hourly JIRA and 15-minute Webex pull schedules, evaluated every five minutes inside the existing sb-core process.

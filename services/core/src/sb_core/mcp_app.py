@@ -56,6 +56,9 @@ def _mount_domains() -> None:
     mcp.mount(jira_bulk_mcp)
 
     _seed_ledger_registry()
+    from .scheduler import ensure_default_sync_schedules
+
+    ensure_default_sync_schedules()
 
 
 def _seed_ledger_registry() -> None:

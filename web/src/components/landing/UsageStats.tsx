@@ -46,7 +46,7 @@ export function UsagePie({
         <div className={compact ? 'text-12 font-medium text-text-primary' : 'text-13 font-medium text-text-primary'}>{compact ? label.replace('GitHub ', '') : label}</div>
         <div className="text-12 tabular text-text-muted">{percentLabel}</div>
       </div>
-      <div className="absolute left-0 top-full z-20 hidden pt-2 group-hover:block group-focus-within:block">
+      <div className={`absolute top-full z-30 hidden pt-2 group-hover:block group-focus-within:block ${compact ? 'right-0' : 'left-0'}`}>
         <dl className="w-64 rounded-lg border border-border-subtle bg-bg-elevated p-3">
           {details.map(([name, value]) => (
             <div key={name} className="flex items-baseline justify-between gap-4 py-0.5 text-12">
