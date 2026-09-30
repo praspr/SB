@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ListTodo, Calendar, MessageSquare, Ticket, Library, Radio, ChevronLeft, ChevronRight, Settings, FileText, BookOpen, Inbox } from 'lucide-react'
+import { ListTodo, Calendar, MessageSquare, Ticket, Library, Radio, ChevronLeft, ChevronRight, Settings, FileText, BookOpen, Inbox, Target } from 'lucide-react'
 import { SettingsPopover } from '@/components/layout/SettingsPopover'
 import { webexAttentionRanked } from '@/lib/triage'
 import { useUiStore } from '@/lib/store'
@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 
 const navItems = [
   { to: '/attention', label: 'Attention', icon: Inbox, end: false },
+  { to: '/goals', label: 'Goals', icon: Target, end: false },
   { to: '/reports', label: 'Reports', icon: FileText, end: false },
   { to: '/ledger', label: 'Ledger', icon: BookOpen, end: false },
   { to: '/proposals', label: 'Proposals', icon: Inbox, end: false },

@@ -6,9 +6,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ledgerProjects, ledgerRegisterProject, ledgerSessions } from '@/lib/ledger'
+import { addScheduledRitual, deleteScheduledRitual, listScheduledRituals } from '@/lib/schedules'
 import { SETTING_CHECKS, type CheckResult } from '@/lib/settings-checks'
 import { fetchCoreStatus } from '@/lib/status'
 import { cn } from '@/lib/utils'
+import { SchedulesTab, RITUAL_OPTIONS } from '@/components/layout/SchedulesTab'
 
 type SettingsPopoverProps = {
   children: ReactNode
@@ -21,6 +23,10 @@ export function SettingsPopover({ children }: SettingsPopoverProps) {
   const [projectName, setProjectName] = useState('')
   const [rootPath, setRootPath] = useState('')
   const [changelogPath, setChangelogPath] = useState('')
+  const [scheduleName, setScheduleName] = useState('')
+  const [scheduleRitual, setScheduleRitual] = useState(RITUAL_OPTIONS[0])
+  const [scheduleCron, setScheduleCron] = useState('')
+  const [scheduleEnabled, setScheduleEnabled] = useState(true)
 
   const checks = useQueries({
     queries: SETTING_CHECKS.map((check) => ({
@@ -50,6 +56,29 @@ export function SettingsPopover({ children }: SettingsPopoverProps) {
       setRootPath('')
       setChangelogPath('')
       void queryClient.invalidateQueries({ queryKey: ['ledger', 'projects'] })
+    },
+  })
+
+  const schedulesQuery = useQuery({
+    queryKey: ['schedules'],
+    queryFn: listScheduledRituals,
+    staleTime: 15_000,
+    retry: 0,
+  })
+  const addSchedule = useMutation({
+    mutationFn: addScheduledRitual,
+    onSuccess: () => {
+      setScheduleName('')
+      setScheduleCron('')
+      setScheduleRitual(RITUAL_OPTIONS[0])
+      setScheduleEnabled(true)
+      void queryClient.invalidateQueries({ queryKey: ['schedules'] })
+    },
+  })
+  const removeSchedule = useMutation({
+    mutationFn: deleteScheduledRitual,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['schedules'] })
     },
   })
 
@@ -97,11 +126,12 @@ export function SettingsPopover({ children }: SettingsPopoverProps) {
           </div>
 
           <Tabs value={tab} onValueChange={setTab}>
-            <TabsList className="grid grid-cols-4 gap-1">
+            <TabsList className="grid grid-cols-5 gap-1">
               <TabsTrigger value="connections">Connections</TabsTrigger>
               <TabsTrigger value="diagnostics">Diagnostics</TabsTrigger>
               <TabsTrigger value="projects">Projects</TabsTrigger>
               <TabsTrigger value="sessions">Sessions</TabsTrigger>
+              <TabsTrigger value="schedules">Schedules</TabsTrigger>
             </TabsList>
 
             <TabsContent value="connections" className="space-y-2.5">
@@ -225,6 +255,31 @@ export function SettingsPopover({ children }: SettingsPopoverProps) {
                   </div>
                 ))}
               </div>
+            </TabsContent>
+
+            <TabsContent value="schedules">
+              <SchedulesTab
+                schedules={schedulesQuery.data ?? []}
+                name={scheduleName}
+                onName={setScheduleName}
+                ritual={scheduleRitual}
+                onRitual={setScheduleRitual}
+                cron={scheduleCron}
+                onCron={setScheduleCron}
+                enabled={scheduleEnabled}
+                onEnabled={setScheduleEnabled}
+                addPending={addSchedule.isPending}
+                removePending={removeSchedule.isPending}
+                onAdd={() =>
+                  addSchedule.mutate({
+                    name: scheduleName,
+                    ritual: scheduleRitual,
+                    cron: scheduleCron,
+                    enabled: scheduleEnabled,
+                  })
+                }
+                onDelete={(id) => removeSchedule.mutate(id)}
+              />
             </TabsContent>
           </Tabs>
 
