@@ -1,10 +1,13 @@
 import { NavLink } from 'react-router-dom'
-import { ListTodo, Calendar, MessageSquare, Ticket, Library, Radio, Sun, NotebookPen, Megaphone, ChevronLeft, ChevronRight, Settings } from 'lucide-react'
+import { ListTodo, Calendar, MessageSquare, Ticket, Library, Radio, Sun, NotebookPen, Megaphone, ChevronLeft, ChevronRight, Settings, FileText, BookOpen, Inbox } from 'lucide-react'
 import { SettingsPopover } from '@/components/layout/SettingsPopover'
 import { useUiStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
 const navItems = [
+  { to: '/reports', label: 'Reports', icon: FileText, end: false },
+  { to: '/ledger', label: 'Ledger', icon: BookOpen, end: false },
+  { to: '/proposals', label: 'Proposals', icon: Inbox, end: false },
   { to: '/jira', label: 'JIRAs', icon: Ticket, end: false },
   { to: '/todos', label: 'Todos', icon: ListTodo, end: false },
   { to: '/meetings', label: 'Meetings', icon: Calendar, end: false },
