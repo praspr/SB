@@ -8,10 +8,13 @@ lists/bools) and never touch transport concerns (HTTP, MCP protocol, etc).
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from .models import Todo, TodoCreate, TodoUpdate
+
+_WEEKDAY_CODES = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"]
 
 
 def _now() -> str:
@@ -35,6 +38,10 @@ def _row_to_todo(row: sqlite3.Row) -> Todo:
         external_source=data.get("external_source"),
         external_ref=data.get("external_ref"),
         domain=data.get("domain", "work"),
+        goal_id=data.get("goal_id"),
+        jira_ref=data.get("jira_ref"),
+        recurrence_rule=data.get("recurrence_rule"),
+        parent_todo_id=data.get("parent_todo_id"),
         created_at=data["created_at"],
         updated_at=data["updated_at"],
     )
@@ -114,7 +121,8 @@ def add_todo(conn: sqlite3.Connection, data: TodoCreate) -> Todo:
                 """
                 UPDATE todos SET
                   title = ?, description = ?, priority = ?, due_date = ?,
-                  due_time = ?, tags = ?, domain = ?, updated_at = ?
+                  due_time = ?, tags = ?, domain = ?, goal_id = ?, jira_ref = ?,
+                  recurrence_rule = ?, parent_todo_id = ?, updated_at = ?
                 WHERE id = ?
                 """,
                 (
@@ -125,6 +133,10 @@ def add_todo(conn: sqlite3.Connection, data: TodoCreate) -> Todo:
                     data.due_time,
                     tags_json,
                     data.domain,
+                    data.goal_id,
+                    data.jira_ref,
+                    data.recurrence_rule,
+                    data.parent_todo_id,
                     now,
                     todo_id,
                 ),
@@ -136,8 +148,9 @@ def add_todo(conn: sqlite3.Connection, data: TodoCreate) -> Todo:
         """
         INSERT INTO todos (
           title, description, priority, due_date, due_time, tags,
-          external_source, external_ref, domain, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          external_source, external_ref, domain, goal_id, jira_ref,
+          recurrence_rule, parent_todo_id, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             data.title,
@@ -149,6 +162,10 @@ def add_todo(conn: sqlite3.Connection, data: TodoCreate) -> Todo:
             data.external_source,
             data.external_ref,
             data.domain,
+            data.goal_id,
+            data.jira_ref,
+            data.recurrence_rule,
+            data.parent_todo_id,
             now,
             now,
         ),
@@ -159,15 +176,22 @@ def add_todo(conn: sqlite3.Connection, data: TodoCreate) -> Todo:
 
 
 def complete_todo(conn: sqlite3.Connection, todo_id: int) -> Todo:
-    """Mark a todo as completed, setting completed_at and updated_at to now."""
+    """Mark a todo as completed, setting completed_at and updated_at to now.
+
+    If the todo has a ``recurrence_rule``, immediately materializes the next
+    instance (idempotent -- see ``expand_recurring_todo``).
+    """
     now = _now()
-    if get_todo(conn, todo_id) is None:
+    existing = get_todo(conn, todo_id)
+    if existing is None:
         raise ValueError(f"todo {todo_id} not found")
     conn.execute(
         "UPDATE todos SET is_completed = 1, completed_at = ?, updated_at = ? WHERE id = ?",
         (now, now, todo_id),
     )
     conn.commit()
+    if existing.recurrence_rule:
+        expand_recurring_todo(conn, todo_id)
     return get_todo(conn, todo_id)  # type: ignore[return-value]
 
 
@@ -232,3 +256,113 @@ def search_todos(conn: sqlite3.Connection, query: str, *, limit: int = 20) -> li
         (like, like, limit),
     ).fetchall()
     return [_row_to_todo(row) for row in rows]
+
+
+# ---------------------------------------------------------------------------
+# Recurrence (RRULE-lite): FREQ=DAILY | FREQ=WEEKLY;BYDAY=MO,WE | FREQ=MONTHLY;BYMONTHDAY=1
+# ---------------------------------------------------------------------------
+
+_FREQ_RE = re.compile(r"FREQ=(DAILY|WEEKLY|MONTHLY)", re.IGNORECASE)
+_BYDAY_RE = re.compile(r"BYDAY=([A-Z,]+)", re.IGNORECASE)
+_BYMONTHDAY_RE = re.compile(r"BYMONTHDAY=(\d+)", re.IGNORECASE)
+
+
+def _parse_recurrence(rule: str) -> dict:
+    freq_match = _FREQ_RE.search(rule or "")
+    if not freq_match:
+        raise ValueError(f"unsupported recurrence_rule: {rule!r} (missing FREQ)")
+    freq = freq_match.group(1).upper()
+    byday: list[str] = []
+    byday_match = _BYDAY_RE.search(rule)
+    if byday_match:
+        byday = [d.strip().upper() for d in byday_match.group(1).split(",") if d.strip()]
+    bymonthday: int | None = None
+    bymonthday_match = _BYMONTHDAY_RE.search(rule)
+    if bymonthday_match:
+        bymonthday = int(bymonthday_match.group(1))
+    return {"freq": freq, "byday": byday, "bymonthday": bymonthday}
+
+
+def _next_due_date(rule: str, base: date) -> str:
+    """Compute the next due date after *base* per the RRULE-lite *rule*."""
+    parsed = _parse_recurrence(rule)
+    freq = parsed["freq"]
+
+    if freq == "DAILY":
+        return (base + timedelta(days=1)).isoformat()
+
+    if freq == "WEEKLY":
+        byday = parsed["byday"]
+        if not byday:
+            return (base + timedelta(days=7)).isoformat()
+        wanted = {_WEEKDAY_CODES.index(code) for code in byday if code in _WEEKDAY_CODES}
+        if not wanted:
+            return (base + timedelta(days=7)).isoformat()
+        for offset in range(1, 8):
+            candidate = base + timedelta(days=offset)
+            if candidate.weekday() in wanted:
+                return candidate.isoformat()
+        return (base + timedelta(days=7)).isoformat()
+
+    if freq == "MONTHLY":
+        day = parsed["bymonthday"] or base.day
+        year, month = base.year, base.month + 1
+        if month > 12:
+            month = 1
+            year += 1
+        # Clamp to the last valid day of the target month (e.g. day=31 in
+        # a 30-day month) rather than raising.
+        while True:
+            try:
+                return date(year, month, day).isoformat()
+            except ValueError:
+                day -= 1
+                if day < 1:
+                    raise
+
+    raise ValueError(f"unsupported recurrence frequency: {freq!r}")
+
+
+def expand_recurring_todo(conn: sqlite3.Connection, todo_id: int) -> Todo | None:
+    """Materialize the next instance of a recurring todo.
+
+    The new instance carries ``parent_todo_id`` pointing at the original
+    template and inherits title, priority, tags, domain, goal_id, jira_ref,
+    and recurrence_rule. Idempotent: if an instance with the same
+    ``(parent_todo_id, due_date)`` already exists, that existing row is
+    returned instead of creating a duplicate. Returns None if the todo does
+    not exist or has no ``recurrence_rule``.
+    """
+    template = get_todo(conn, todo_id)
+    if template is None or not template.recurrence_rule:
+        return None
+
+    base_date_str = template.due_date or date.today().isoformat()
+    try:
+        base_date = date.fromisoformat(base_date_str)
+    except ValueError:
+        base_date = date.today()
+
+    next_due = _next_due_date(template.recurrence_rule, base_date)
+
+    existing = conn.execute(
+        "SELECT id FROM todos WHERE parent_todo_id = ? AND due_date = ?",
+        (todo_id, next_due),
+    ).fetchone()
+    if existing:
+        return get_todo(conn, existing["id"])
+
+    data = TodoCreate(
+        title=template.title,
+        description=template.description,
+        priority=template.priority,
+        due_date=next_due,
+        due_time=template.due_time,
+        tags=template.tags,
+        domain=template.domain,
+        goal_id=template.goal_id,
+        jira_ref=template.jira_ref,
+        recurrence_rule=template.recurrence_rule,
+        parent_todo_id=todo_id,
+    )
+    return add_todo(conn, data)

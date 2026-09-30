@@ -13,6 +13,7 @@ EXPECTED_TOOLS = {
     "todo_update",
     "todo_delete",
     "todo_search",
+    "expand_recurring_todo",
 }
 
 

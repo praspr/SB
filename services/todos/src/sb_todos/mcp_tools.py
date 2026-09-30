@@ -60,9 +60,19 @@ def todo_add(
     domain: str = "work",
     external_source: str | None = None,
     external_ref: str | None = None,
+    goal_id: int | None = None,
+    jira_ref: str | None = None,
+    recurrence_rule: str | None = None,
+    parent_todo_id: int | None = None,
 ) -> dict:
     """Create a new todo. If external_source/external_ref match an existing
-    todo, that todo is updated instead (idempotent upsert)."""
+    todo, that todo is updated instead (idempotent upsert).
+
+    ``recurrence_rule`` is an RRULE-lite string (``FREQ=DAILY``,
+    ``FREQ=WEEKLY;BYDAY=MO,WE``, ``FREQ=MONTHLY;BYMONTHDAY=1``); when a todo
+    with a recurrence_rule is completed, the next instance is materialized
+    automatically (see ``expand_recurring_todo``).
+    """
     data = TodoCreate(
         title=title,
         description=description,
@@ -73,6 +83,10 @@ def todo_add(
         domain=domain,
         external_source=external_source,
         external_ref=external_ref,
+        goal_id=goal_id,
+        jira_ref=jira_ref,
+        recurrence_rule=recurrence_rule,
+        parent_todo_id=parent_todo_id,
     )
     with closing(_open_conn()) as conn:
         todo = handlers.add_todo(conn, data)
@@ -105,6 +119,10 @@ def todo_update(
     due_time: str | None = None,
     tags: list[str] | None = None,
     domain: str | None = None,
+    goal_id: int | None = None,
+    jira_ref: str | None = None,
+    recurrence_rule: str | None = None,
+    parent_todo_id: int | None = None,
 ) -> dict:
     """Update the given fields of a todo. Only provided fields are changed."""
     data = TodoUpdate(
@@ -115,6 +133,10 @@ def todo_update(
         due_time=due_time,
         tags=tags,
         domain=domain,
+        goal_id=goal_id,
+        jira_ref=jira_ref,
+        recurrence_rule=recurrence_rule,
+        parent_todo_id=parent_todo_id,
     )
     with closing(_open_conn()) as conn:
         todo = handlers.update_todo(conn, todo_id, data)
@@ -135,3 +157,18 @@ def todo_search(query: str, limit: int = 20) -> list[dict]:
     with closing(_open_conn()) as conn:
         todos = handlers.search_todos(conn, query, limit=limit)
         return [t.model_dump() for t in todos]
+
+
+@mcp.tool()
+def expand_recurring_todo(todo_id: int) -> dict | None:
+    """Manually materialize the next instance of a recurring todo.
+
+    Normally triggered automatically when a recurring todo is completed
+    (see ``todo_complete``); this tool exposes the same expansion for manual
+    use. Idempotent: calling it twice for the same due date returns the
+    existing instance instead of creating a duplicate. Returns None if the
+    todo does not exist or has no ``recurrence_rule``.
+    """
+    with closing(_open_conn()) as conn:
+        todo = handlers.expand_recurring_todo(conn, todo_id)
+        return todo.model_dump() if todo is not None else None

@@ -25,6 +25,10 @@ class Todo(BaseModel):
     external_source: str | None = None
     external_ref: str | None = None
     domain: str = "work"
+    goal_id: int | None = None
+    jira_ref: str | None = None
+    recurrence_rule: str | None = None
+    parent_todo_id: int | None = None
     created_at: str
     updated_at: str
 
@@ -39,6 +43,10 @@ class TodoCreate(BaseModel):
     external_source: str | None = None
     external_ref: str | None = None
     domain: str = "work"
+    goal_id: int | None = None
+    jira_ref: str | None = None
+    recurrence_rule: str | None = None
+    parent_todo_id: int | None = None
 
 
 class TodoUpdate(BaseModel):
@@ -49,6 +57,10 @@ class TodoUpdate(BaseModel):
     due_time: str | None = None
     tags: list[str] | None = None
     domain: str | None = None
+    goal_id: int | None = None
+    jira_ref: str | None = None
+    recurrence_rule: str | None = None
+    parent_todo_id: int | None = None
 
 
 class TodoFilter(BaseModel):
