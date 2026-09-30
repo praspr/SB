@@ -27,6 +27,7 @@ def _mount_domains() -> None:
     mcp.mount(jira_mcp)
     from .chat_tools import mcp as chat_mcp
     from .goals_tools import mcp as goals_mcp
+    from .jira_bulk import mcp as jira_bulk_mcp
     from .ledger_tools import mcp as ledger_mcp
     from .reports_tools import mcp as reports_mcp
     from .scheduler import mcp as scheduler_mcp
@@ -50,6 +51,7 @@ def _mount_domains() -> None:
     mcp.mount(goals_mcp)
     mcp.mount(scheduler_mcp)
     mcp.mount(url_hints_mcp)
+    mcp.mount(jira_bulk_mcp)
 
     _seed_ledger_registry()
 
