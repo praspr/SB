@@ -66,9 +66,42 @@ def _m2_skills(conn: sqlite3.Connection) -> None:
         """)
 
 
+def _m3_signals(conn: sqlite3.Connection) -> None:
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS sb_signals (
+          id          INTEGER PRIMARY KEY AUTOINCREMENT,
+          source      TEXT    NOT NULL,
+          source_id   TEXT    NOT NULL,
+          kind        TEXT    NOT NULL,
+          occurred_at TEXT    NOT NULL,
+          title       TEXT    NOT NULL,
+          body        TEXT,
+          scope       TEXT,
+          verb        TEXT,
+          refs        TEXT    NOT NULL DEFAULT '[]',
+          raw_ref     TEXT,
+          created_at  TEXT    NOT NULL,
+          UNIQUE(source, source_id)
+        )
+        """)
+
+
+def _m4_sync_state(conn: sqlite3.Connection) -> None:
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS sb_sync_state (
+          adapter      TEXT PRIMARY KEY,
+          last_run_at  TEXT NOT NULL,
+          signal_count INTEGER NOT NULL DEFAULT 0,
+          error        TEXT
+        )
+        """)
+
+
 _MIGRATIONS: list[tuple[int, Callable[[sqlite3.Connection], None]]] = [
     (1, _m1_metadata),
     (2, _m2_skills),
+    (3, _m3_signals),
+    (4, _m4_sync_state),
 ]
 
 # Tables whose required columns are re-verified on every connect. Empty until

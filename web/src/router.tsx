@@ -3,6 +3,7 @@ import { AppShell } from '@/components/layout/AppShell'
 import { LandingPage } from '@/pages/LandingPage'
 import { StatusPage } from '@/pages/StatusPage'
 import { SkillsPage } from '@/pages/SkillsPage'
+import { SignalsPage } from '@/pages/SignalsPage'
 import { TodosPage } from '@/pages/TodosPage'
 import { JirasPage } from '@/pages/JirasPage'
 import { MeetingsPage } from '@/pages/MeetingsPage'
@@ -16,6 +17,7 @@ export const router = createBrowserRouter([
       { index: true, element: <LandingPage /> },
       { path: 'status', element: <StatusPage /> },
       { path: 'skills', element: <SkillsPage /> },
+      { path: 'signals', element: <SignalsPage /> },
       { path: 'todos', element: <TodosPage /> },
       { path: 'jira', element: <JirasPage /> },
       { path: 'meetings', element: <MeetingsPage /> },

@@ -74,6 +74,10 @@ directories in `SB_CORE_EXTRA_SKILL_ROOTS`. It does not scan the rest of the
 home directory. Content identity uses SHA-256. The dashboard lists skills at
 `/skills`.
 
+Signal adapters (`todos`, `jira`, `changelog`, `git`) write canonical UTC rows
+into `sb_signals`. Search them with `search_signals` and cite `[signal:N]`.
+The dashboard shows them at `/signals`.
+
 ```bash
 cd sb/services/core
 uv sync --group dev
