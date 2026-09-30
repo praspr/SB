@@ -36,7 +36,9 @@ def get_token() -> str | None:
     try:
         import keyring
 
-        token = keyring.get_password(settings.keyring_service, settings.keyring_username)
+        token = keyring.get_password(
+            settings.keyring_service, settings.keyring_username
+        )
         if token:
             return token
     except Exception as exc:  # noqa: BLE001
@@ -83,7 +85,9 @@ def probe_reachable(timeout: float = 5.0) -> tuple[bool, str | None]:
     url = f"{settings.atlassian_site}/rest/api/3/myself"
     try:
         with httpx.Client(timeout=timeout) as client:
-            resp = client.get(url, headers=_auth_header(settings.atlassian_email, token))
+            resp = client.get(
+                url, headers=_auth_header(settings.atlassian_email, token)
+            )
         if resp.status_code == 200:
             return True, None
         if resp.status_code == 401:
@@ -125,7 +129,9 @@ def _issue_to_detail(issue: dict[str, Any]) -> JiraTicketDetail:
 
     description_adf = fields.get("description")
     description_md = _adf_to_text(description_adf).strip() if description_adf else ""
-    description = (description_md[:200] + "…") if len(description_md) > 200 else description_md
+    description = (
+        (description_md[:200] + "…") if len(description_md) > 200 else description_md
+    )
 
     url = f"{settings.atlassian_site}/browse/{key}"
 
@@ -146,38 +152,44 @@ def _issue_to_detail(issue: dict[str, Any]) -> JiraTicketDetail:
         url=url,
         file_path="",
         description_md=description_md,
-        sections=[Section(name="Context", body=description_md)] if description_md else [],
+        sections=(
+            [Section(name="Context", body=description_md)] if description_md else []
+        ),
     )
 
 
 def fetch_all_assigned(timeout: float = 15.0) -> list[JiraTicketDetail]:
-    """Fetch all tickets matching `settings.atlassian_jql` via REST v3, paginated."""
+    """Fetch tickets matching `settings.atlassian_jql` via the enhanced JQL search.
+
+    `/rest/api/3/search` was removed. Pagination uses `nextPageToken`.
+    """
     token = get_token()
     if not token:
         raise AtlassianAuthError("No Atlassian token configured")
 
     headers = _auth_header(settings.atlassian_email, token)
-    url = f"{settings.atlassian_site}/rest/api/3/search"
-    start_at = 0
-    max_results = 100
+    url = f"{settings.atlassian_site}/rest/api/3/search/jql"
+    fields = [name.strip() for name in FIELDS.split(",") if name.strip()]
+    page_token: str | None = None
+    seen_tokens: set[str] = set()
     tickets: list[JiraTicketDetail] = []
 
     with httpx.Client(timeout=timeout) as client:
-        while True:
-            resp = client.get(
-                url,
-                headers=headers,
-                params={
-                    "jql": settings.atlassian_jql,
-                    "fields": FIELDS,
-                    "startAt": start_at,
-                    "maxResults": max_results,
-                },
-            )
+        for _ in range(50):
+            params: dict[str, Any] = {
+                "jql": settings.atlassian_jql,
+                "fields": fields,
+                "maxResults": 100,
+            }
+            if page_token:
+                params["nextPageToken"] = page_token
+            resp = client.get(url, headers=headers, params=params)
             if resp.status_code == 401:
                 raise AtlassianAuthError("Atlassian authentication failed (401)")
             if resp.status_code != 200:
-                raise AtlassianClientError(f"Atlassian search failed: HTTP {resp.status_code} {resp.text[:300]}")
+                raise AtlassianClientError(
+                    f"Atlassian search failed: HTTP {resp.status_code} {resp.text[:300]}"
+                )
 
             data = resp.json()
             issues = data.get("issues", [])
@@ -185,12 +197,20 @@ def fetch_all_assigned(timeout: float = 15.0) -> list[JiraTicketDetail]:
                 try:
                     tickets.append(_issue_to_detail(issue))
                 except Exception as exc:  # noqa: BLE001
-                    logger.warning("failed to parse Atlassian issue %s: %s", issue.get("key"), exc)
+                    logger.warning(
+                        "failed to parse Atlassian issue %s: %s", issue.get("key"), exc
+                    )
 
-            total = data.get("total", len(issues))
-            start_at += len(issues)
-            if start_at >= total or not issues:
+            next_token = data.get("nextPageToken")
+            if (
+                data.get("isLast", not next_token)
+                or not issues
+                or not next_token
+                or next_token in seen_tokens
+            ):
                 break
+            seen_tokens.add(next_token)
+            page_token = next_token
 
     return tickets
 

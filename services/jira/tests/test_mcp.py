@@ -33,6 +33,18 @@ def test_list_jira_tickets_filters_by_q():
 def test_list_jira_tickets_respects_limit():
     result = mcp_tools.list_jira_tickets(limit=1)
     assert len(result) == 1
+    assert result[0]["key"] == "CXP-46855"  # updated 2026-08-19, newer than CXP-40585
+
+
+def test_jira_status_reads_newest_history_date():
+    from sb_jira.config import settings
+
+    settings.tickethistory_path.write_text(
+        "| 2026-09-30 | CXP-53812 | **Status Update** | still open |\n"
+        "| 2026-09-08 | CXP-1 | **Removed** | closed |\n",
+        encoding="utf-8",
+    )
+    assert mcp_tools.jira_status()["last_sync_at"] == "2026-09-30"
 
 
 def test_get_jira_ticket_real_fixture():

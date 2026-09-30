@@ -168,7 +168,9 @@ def parse_str(text: str, file_path: str = "") -> JiraTicketDetail:
     priority = fields.get("Priority", "").strip() or "Medium"
     issue_type = fields.get("Type", "").strip() or "Task"
 
-    assignee = _parse_person(fields.get("Assignee", "")) or Person(name="Unassigned", email="")
+    assignee = _parse_person(fields.get("Assignee", "")) or Person(
+        name="Unassigned", email=""
+    )
     reporter = _parse_person(fields.get("Reporter", ""))
 
     created = fields.get("Created", "").strip()
@@ -181,7 +183,11 @@ def parse_str(text: str, file_path: str = "") -> JiraTicketDetail:
 
     description_section = None
     for s in sections:
-        if s.name.lower() in {"context", "feature description / requirements", "feature description"}:
+        if s.name.lower() in {
+            "context",
+            "feature description / requirements",
+            "feature description",
+        }:
             description_section = s
             break
     if description_section is None and sections:
@@ -266,7 +272,9 @@ def load_all(tickets_dir: Path | None = None) -> list[JiraTicketDetail]:
     for path in sorted(directory.glob("*.md")):
         try:
             tickets.append(load(path))
-        except Exception as exc:  # noqa: BLE001 - intentional broad catch, per-file isolation
+        except (
+            Exception
+        ) as exc:  # noqa: BLE001 - intentional broad catch, per-file isolation
             logger.warning("failed to parse ticket file %s: %s", path, exc)
             continue
     return tickets
@@ -314,4 +322,6 @@ def apply_filters(
     if q:
         needle = q.lower()
         result = [t for t in result if needle in f"{t.key} {t.title}".lower()]
+    # Match docs/jira/README.md: newest update first.
+    result.sort(key=lambda ticket: ticket.updated or "", reverse=True)
     return result

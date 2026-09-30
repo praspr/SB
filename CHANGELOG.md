@@ -4,12 +4,15 @@
 
 ### Changed
 
+- Migrate the pull-only Atlassian search client to the enhanced `/rest/api/3/search/jql` endpoint with token pagination, and align JIRA ordering, statuses, and last-sync metadata with the local markdown mirror.
 - Reconcile the working tree before the unified MCP rollout. Baseline before Step 1: todos 18 passed, JIRA 14 passed, web MCP client 5 passed, and `tsc --noEmit` clean. The core suite is not green; unfinished ritual tests stay out of the active set until their step.
 
 - Cut over login startup to the single `com.praspr.sb` launchd job and one `sb` MCP entry at `/mcp` in each harness. The standalone todos and JIRA jobs are retired. Startup now restores skill prompts and resources from the stored index, so they survive a restart.
 
 ### Added
 
+- Add compact landing-page charts for todo completion, JIRA status, and signal sources, with drill-down links to filtered views.
+- Add a read-only `ask_sb` MCP tool and landing-page chat grounded in bounded local todos, JIRA tickets, and signals. Answers use validated citations and fall back deterministically when the LLM is unavailable or returns unsupported claims.
 - Scaffold `sb-core` on `127.0.0.1:8787` with a metadata-only SQLite schema, `system_status`, `/health`, and a `/status` page. Domain REST routes stay absent. Launchd plist is prepared; login cutover is documented and not applied.
 - Mount the eight todo tools in-process on the same MCP, with a fresh SQLite connection per call, and point the Todos UI at that client. The standalone todos REST app and launchd plist are removed from the repo.
 - Mount the four pull-only JIRA tools on the same MCP and point the JIRA page at that client. Health does not probe Atlassian. The standalone JIRA REST app and launchd plist are removed from the repo.

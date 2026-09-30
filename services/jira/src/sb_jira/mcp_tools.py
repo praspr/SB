@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from fastmcp import FastMCP
 
 from . import atlassian_client, file_store, sync
@@ -73,12 +75,15 @@ def _last_sync_at() -> str | None:
         text = path.read_text(encoding="utf-8")
     except OSError:
         return None
-    last: str | None = None
+    # tickethistory.md is newest-first. A legacy row uses "SYNC" in column 2;
+    # the maintained history uses the activity date in column 1.
     for line in text.splitlines():
-        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
-        if len(cells) >= 2 and cells[1] == "SYNC" and cells[0]:
-            last = cells[0]
-    return last
+        cells = [cell.strip().strip("*") for cell in line.strip().strip("|").split("|")]
+        if not cells:
+            continue
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", cells[0]):
+            return cells[0]
+    return None
 
 
 @mcp.tool()

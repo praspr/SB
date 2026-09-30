@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { RefreshCw } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 import { cite, searchSignals, syncAdapters, syncStatus, type AdapterState, type SignalRecord } from '@/lib/signals'
 
 export function SignalsView({
@@ -63,9 +64,14 @@ export function SignalsView({
 
 export function SignalsPage() {
   const client = useQueryClient()
+  const [searchParams] = useSearchParams()
+  const source = searchParams.get('source') ?? undefined
   const [query, setQuery] = useState('')
   const [error, setError] = useState<string>()
-  const signals = useQuery({ queryKey: ['signals', query], queryFn: () => searchSignals(query) })
+  const signals = useQuery({
+    queryKey: ['signals', query, source],
+    queryFn: () => searchSignals({ query, source }),
+  })
   const status = useQuery({ queryKey: ['sync-status'], queryFn: syncStatus })
   const sync = useMutation({
     mutationFn: syncAdapters,

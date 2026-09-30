@@ -1,12 +1,16 @@
 import { useMemo, useState } from 'react'
 import { RefreshCw, Loader2 } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 import { useJiraTickets, useSyncJira, useJiraStatus } from '@/lib/queries'
 import { JiraFilterBar, type JiraPriorityFilter, type JiraProjectFilter, type JiraStatusFilter } from '@/components/jira/JiraFilterBar'
 import { JiraTicketList } from '@/components/jira/JiraTicketList'
 import { Button } from '@/components/ui/button'
 
 export function JirasPage() {
-  const [status, setStatus] = useState<JiraStatusFilter>('all')
+  const [searchParams] = useSearchParams()
+  const [status, setStatus] = useState<JiraStatusFilter>(
+    (searchParams.get('status') as JiraStatusFilter | null) ?? 'all',
+  )
   const [priority, setPriority] = useState<JiraPriorityFilter>('all')
   const [project, setProject] = useState<JiraProjectFilter>('all')
   const [q, setQ] = useState('')
@@ -37,11 +41,13 @@ export function JirasPage() {
         <div>
           <h1 className="text-20 font-semibold text-text-primary">JIRAs</h1>
           <p className="mt-1 text-13 text-text-secondary">
-            Assigned tickets across your projects
-            {svcStatus?.atlassian_reachable === false && svcStatus.atlassian_error
-              ? ` · Atlassian: ${svcStatus.atlassian_error.slice(0, 60)}`
-              : ''}
+            Local mirror at ciq/docs/jira/tickets
+            {svcStatus ? ` · ${svcStatus.tickets_count} tickets` : ''}
+            {svcStatus?.last_sync_at ? ` · last sync ${svcStatus.last_sync_at}` : ''}
           </p>
+          {svcStatus?.atlassian_reachable === false && svcStatus.atlassian_error ? (
+            <p className="mt-1 text-12 text-text-muted">{svcStatus.atlassian_error}</p>
+          ) : null}
         </div>
         <div className="flex items-center gap-2">
           {syncMsg && <span className="text-12 text-text-secondary">{syncMsg}</span>}
@@ -71,8 +77,8 @@ export function JirasPage() {
       <JiraTicketList tickets={tickets} isLoading={isLoading} />
 
       <p className="text-12 text-text-muted">
-        Reading from the local markdown mirror · {tickets?.length ?? svcStatus?.tickets_count ?? 0} tickets
-        {svcStatus?.last_sync_at ? ` · last sync ${svcStatus.last_sync_at}` : ''}
+        Same tickets as ciq/docs/jira/README.md · showing {tickets?.length ?? 0}
+        {svcStatus?.tickets_count != null ? ` of ${svcStatus.tickets_count}` : ''} · pull-only Atlassian sync
       </p>
     </div>
   )

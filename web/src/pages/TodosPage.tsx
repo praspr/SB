@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useTasks } from '@/lib/queries'
 import { TaskList } from '@/components/tasks/TaskList'
 import { QuickAddInput, type QuickAddInputHandle } from '@/components/tasks/QuickAddInput'
@@ -10,7 +11,11 @@ type StatusFilter = 'all' | 'open' | 'completed'
 
 export function TodosPage() {
   const { data: tasks, isLoading } = useTasks()
-  const [status, setStatus] = useState<StatusFilter>('open')
+  const [searchParams] = useSearchParams()
+  const requestedStatus = searchParams.get('status')
+  const initialStatus: StatusFilter =
+    requestedStatus === 'all' || requestedStatus === 'completed' ? requestedStatus : 'open'
+  const [status, setStatus] = useState<StatusFilter>(initialStatus)
   const [priority, setPriority] = useState<Priority | 'all'>('all')
   const quickAddRef = useRef<QuickAddInputHandle>(null)
   const focusQuickAddSignal = useUiStore((s) => s.focusQuickAddSignal)

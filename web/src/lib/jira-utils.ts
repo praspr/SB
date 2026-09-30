@@ -12,7 +12,10 @@ export function statusCategory(status: JiraStatus): StatusCategory {
     case 'Dev Complete':
     case 'In Testing':
     case 'Blocked':
+    case 'Pending Approval':
       return 'active'
+    case 'Test Complete':
+    case 'Done':
     case 'Resolved':
     case 'Closed':
       return 'done'

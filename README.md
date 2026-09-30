@@ -176,15 +176,18 @@ Do not add `sb-todos` or `sb-jira` network servers.
 ## The web app
 
 `sb/web` is a Vite/React/TypeScript app matching a Linear-dense design language
-(see `sb/docs/design/`).
-
-Five pages, five sidebar items:
+(see `sb/docs/design/`). The landing page combines usage, operational charts,
+today's work, and a read-only cited chat over local second-brain data.
 
 | Route | Data | Status |
 |---|---|---|
-| `/` — Landing | Usage tiles (Copilot + Cursor) · Today's todos · Today's meetings | tiles + todos live · meetings mock |
+| `/` — Landing | Usage tiles · todo/JIRA/signal charts · today's work · cited local chat | live except meetings |
+| `/status` | Unified MCP, database, tool/prompt/resource counts | live |
+| `/skills` | Indexed project and system skills | live |
+| `/signals` | Local evidence ledger and adapter state | live |
+| `/today`, `/wrap`, `/standup` | Daily chief-of-staff rituals | live |
 | `/todos` | sb-todos SQLite (add + complete work end-to-end) | live |
-| `/jira` | sb-jira, 24 real tickets from `ciq/docs/jira/tickets/` | live |
+| `/jira` | pull-only JIRA mirror from `ciq/docs/jira/tickets/` | live |
 | `/meetings` | Mock data | placeholder |
 | `/webex` | Mock data | placeholder |
 

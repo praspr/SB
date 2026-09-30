@@ -16,8 +16,11 @@ export type AdapterState = {
   error: string | null
 }
 
-export function searchSignals(query?: string): Promise<SignalRecord[]> {
-  return callTool<SignalRecord[]>('search_signals', query ? { q: query } : {})
+export function searchSignals(filters?: { query?: string; source?: string }): Promise<SignalRecord[]> {
+  return callTool<SignalRecord[]>('search_signals', {
+    ...(filters?.query ? { q: filters.query } : {}),
+    ...(filters?.source ? { source: filters.source } : {}),
+  })
 }
 
 export function syncAdapters(): Promise<{ adapters: Record<string, { signal_count: number; error: string | null }> }> {
