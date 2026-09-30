@@ -11,6 +11,9 @@ export type Task = {
   domain: 'work' | 'learning' | 'personal'
   source: 'jira' | 'manual' | 'changelog'
   ref?: string // e.g. 'CXP-45827'
+  goal_id?: number | null
+  jira_ref?: string | null
+  recurrence_rule?: string | null
   rationale?: string // sb_rationale
   score?: number
 }

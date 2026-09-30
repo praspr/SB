@@ -9,11 +9,13 @@ export function TaskList({
   isLoading,
   emptyTitle = 'No tasks',
   emptyBody = 'Nothing here yet. Add a todo to get started.',
+  goalTitles = {},
 }: {
   tasks: Task[] | undefined
   isLoading?: boolean
   emptyTitle?: string
   emptyBody?: string
+  goalTitles?: Record<number, string>
 }) {
   if (isLoading) return <SkeletonRow lines={5} />
   if (!tasks || tasks.length === 0) {
@@ -24,7 +26,7 @@ export function TaskList({
     <div className="space-y-2">
       {tasks.map((task) => (
         <motion.div key={task.id} layout>
-          <TaskRow task={task} />
+          <TaskRow task={task} goalTitle={task.goal_id ? goalTitles[task.goal_id] : undefined} />
         </motion.div>
       ))}
     </div>

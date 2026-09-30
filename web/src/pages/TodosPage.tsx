@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
-import { useTasks } from '@/lib/queries'
+import { fetchRichTasks } from '@/lib/todos-rich'
+import { listGoalsV2 } from '@/lib/goals'
 import { TaskList } from '@/components/tasks/TaskList'
 import { QuickAddInput, type QuickAddInputHandle } from '@/components/tasks/QuickAddInput'
 import type { Priority } from '@/lib/mock-data'
@@ -10,7 +12,8 @@ import { useUiStore } from '@/lib/store'
 type StatusFilter = 'all' | 'open' | 'completed'
 
 export function TodosPage() {
-  const { data: tasks, isLoading } = useTasks()
+  const { data: tasks, isLoading } = useQuery({ queryKey: ['tasks', 'rich'], queryFn: fetchRichTasks })
+  const goals = useQuery({ queryKey: ['goals-v2', 'todos'], queryFn: async () => listGoalsV2(), staleTime: 30_000 })
   const [searchParams] = useSearchParams()
   const requestedStatus = searchParams.get('status')
   const initialStatus: StatusFilter =
@@ -34,6 +37,8 @@ export function TodosPage() {
       .filter((t) => (priority === 'all' ? true : t.priority === priority))
       .sort((a, b) => a.priority - b.priority)
   }, [tasks, status, priority])
+
+  const goalTitles = useMemo(() => Object.fromEntries((goals.data ?? []).map((goal) => [goal.id, goal.title])), [goals.data])
 
   return (
     <div className="space-y-5">
@@ -92,6 +97,7 @@ export function TodosPage() {
         isLoading={isLoading}
         emptyTitle="No tasks match"
         emptyBody="Try a different filter combination."
+        goalTitles={goalTitles}
       />
     </div>
   )

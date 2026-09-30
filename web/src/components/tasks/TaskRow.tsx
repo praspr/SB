@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { Check } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import type { Task, Priority } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 import { useCompleteTask } from '@/lib/queries'
@@ -24,7 +25,7 @@ const domainClasses: Record<Task['domain'], string> = {
   personal: 'text-success',
 }
 
-export function TaskRow({ task }: { task: Task }) {
+export function TaskRow({ task, goalTitle }: { task: Task; goalTitle?: string }) {
   const completeTask = useCompleteTask()
 
   return (
@@ -74,6 +75,30 @@ export function TaskRow({ task }: { task: Task }) {
                 <>
                   <span>·</span>
                   <span className="tabular">{task.ref}</span>
+                </>
+              )}
+              {goalTitle && (
+                <>
+                  <span>·</span>
+                  <span className="rounded-full border border-border-subtle bg-black/20 px-2 py-0.5 text-12 text-text-secondary">
+                    {goalTitle}
+                  </span>
+                </>
+              )}
+              {task.jira_ref && (
+                <>
+                  <span>·</span>
+                  <Link to={`/jira?q=${encodeURIComponent(task.jira_ref)}`} className="rounded-full border border-border-subtle bg-black/20 px-2 py-0.5 text-12 text-text-secondary hover:text-text-primary">
+                    {task.jira_ref}
+                  </Link>
+                </>
+              )}
+              {task.recurrence_rule && (
+                <>
+                  <span>·</span>
+                  <span className="rounded-full border border-border-subtle bg-black/20 px-2 py-0.5 text-12 text-text-secondary">
+                    {task.recurrence_rule.replace('FREQ=', '').toLowerCase()}
+                  </span>
                 </>
               )}
               {task.due_date && (
