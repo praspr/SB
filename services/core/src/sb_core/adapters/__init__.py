@@ -182,6 +182,10 @@ def _dispatch_by_name(name: str, conn: sqlite3.Connection, config: dict) -> int:
         from sb_core.adapters.git import run  # type: ignore[import]
 
         return run(conn, roots=roots, since_days=since_days, authors=git_authors)
+    if name == "webex":
+        from sb_core.adapters.webex import run  # type: ignore[import]
+
+        return run(conn)
     raise ValueError(f"unknown adapter: {name!r}")
 
 

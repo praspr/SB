@@ -7,7 +7,7 @@ import { formatDateLabel } from '@/lib/utils'
 import { Calendar } from 'lucide-react'
 
 export function MeetingsPage() {
-  const { data: meetings, isLoading } = useMeetings()
+  const { data: meetings, isLoading, isError, error } = useMeetings()
 
   const grouped = useMemo(() => {
     if (!meetings) return []
@@ -33,6 +33,16 @@ export function MeetingsPage() {
   }, [meetings])
 
   if (isLoading) return <SkeletonRow lines={5} />
+
+  if (isError) {
+    return (
+      <EmptyState
+        title="Meetings are unavailable"
+        body={(error as Error)?.message ?? 'Sign in to Webex and sync, or check that sb is running.'}
+        icon={<Calendar size={18} />}
+      />
+    )
+  }
 
   if (grouped.length === 0) {
     return (

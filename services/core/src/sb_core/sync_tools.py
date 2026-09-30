@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 mcp = FastMCP("sb-sync")
 
-_ALL_ADAPTERS: tuple[str, ...] = ("todos", "jira", "changelog", "git")
+_ALL_ADAPTERS: tuple[str, ...] = ("todos", "jira", "changelog", "git", "webex")
 
 
 # ---------------------------------------------------------------------------

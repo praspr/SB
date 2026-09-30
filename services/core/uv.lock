@@ -1197,6 +1197,7 @@ dependencies = [
     { name = "pyyaml" },
     { name = "sb-jira" },
     { name = "sb-todos" },
+    { name = "sb-webex" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -1213,6 +1214,7 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6" },
     { name = "sb-jira", editable = "../jira" },
     { name = "sb-todos", editable = "../todos" },
+    { name = "sb-webex", editable = "../webex" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.34" },
 ]
 
@@ -1277,6 +1279,23 @@ requires-dist = [
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.34" },
 ]
 provides-extras = ["dev"]
+
+[[package]]
+name = "sb-webex"
+version = "0.1.0"
+source = { editable = "../webex" }
+dependencies = [
+    { name = "httpx" },
+    { name = "keyring" },
+    { name = "truststore" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.28" },
+    { name = "keyring", specifier = ">=25.0" },
+    { name = "truststore", specifier = ">=0.10" },
+]
 
 [[package]]
 name = "secretstorage"

@@ -14,8 +14,12 @@ export function SpaceRow({ space }: { space: WebexSpace }) {
           <span className="flex items-center gap-1">
             <Users size={10} /> {space.members_count}
           </span>
-          <span>·</span>
-          <span className="tabular">last active {formatTime(space.last_activity)}</span>
+          {space.last_activity ? (
+            <>
+              <span>·</span>
+              <span className="tabular">last active {formatTime(space.last_activity)}</span>
+            </>
+          ) : null}
         </div>
       </div>
       {space.unread_count > 0 && (

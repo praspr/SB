@@ -141,7 +141,12 @@ def get_goals(active_only: bool = True) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def _render_plan(date_str: str, ranked: list[dict], signals: list) -> tuple[str, dict]:
+def _render_plan(
+    date_str: str,
+    ranked: list[dict],
+    signals: list,
+    meetings: list[dict] | None = None,
+) -> tuple[str, dict]:
     lines = [f"# Plan {date_str}", "", "## Must-dos", ""]
     if ranked:
         for i, item in enumerate(ranked, start=1):
@@ -158,6 +163,13 @@ def _render_plan(date_str: str, ranked: list[dict], signals: list) -> tuple[str,
         for sig in signals:
             signal_ids.append(sig.id)
             lines.append(f"- [signal:{sig.id}] {sig.title}")
+
+    if meetings:
+        lines += ["", "## Meetings", ""]
+        for meeting in meetings:
+            lines.append(
+                f"- {meeting.get('start', '')} {meeting.get('title', 'Meeting')}"
+            )
 
     plan_md = "\n".join(lines) + "\n"
     plan_data = {
@@ -206,8 +218,17 @@ def plan_day(date: Optional[str] = None, refresh: bool = False) -> dict:
 
         goals = _load_goals(active_only=True)
         signals = signal_store.search_signals(conn, limit=20)
+        from .webex_store import list_meetings
+
+        day_meetings = [
+            meeting
+            for meeting in list_meetings(conn)
+            if str(meeting.get("start") or "").startswith(date_str)
+        ]
         ranked = rank_todos(open_todos, goals, today=date_str)
-        plan_md, plan_data = _render_plan(date_str, ranked, signals)
+        plan_md, plan_data = _render_plan(
+            date_str, ranked, signals, meetings=day_meetings
+        )
         daily_store.save_plan(conn, date_str, plan_md, plan_data)
 
         return {
@@ -259,6 +280,13 @@ def standup(date: Optional[str] = None) -> dict:
     try:
         payload = daily_store.get_daily(conn, date_str) or {}
         previous = daily_store.get_daily(conn, prev) or {}
+        from .webex_store import list_meetings
+
+        day_meetings = [
+            meeting["title"]
+            for meeting in list_meetings(conn)
+            if str(meeting.get("start") or "").startswith(date_str)
+        ]
         todos_conn = _get_todos_conn()
         p1 = todo_handlers.list_todos(todos_conn, status="open", priority=1, limit=100)
         p2 = todo_handlers.list_todos(todos_conn, status="open", priority=2, limit=100)
@@ -287,6 +315,9 @@ def standup(date: Optional[str] = None) -> dict:
 
     if not p1 and not p2:
         bullets.append("No P1/P2 tasks open.")
+
+    if day_meetings:
+        bullets.append("Meetings: " + ", ".join(day_meetings[:3]) + ".")
 
     _pad = [
         "Focus is on planned must-dos.",

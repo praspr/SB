@@ -1,20 +1,14 @@
 import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  mockMeetings,
-  mockWebexMessages,
-  mockWebexSpaces,
   type JiraPriority,
   type JiraStatus,
   type JiraTicket,
+  type Meeting,
   type Task,
+  type WebexMessage,
+  type WebexSpace,
 } from './mock-data'
 import { callTool } from './mcp'
-
-const DELAY = 200
-
-function delay<T>(value: T): Promise<T> {
-  return new Promise((resolve) => setTimeout(() => resolve(value), DELAY))
-}
 
 function isToday(iso?: string): boolean {
   if (!iso) return false
@@ -154,21 +148,48 @@ export function useAddTask() {
   })
 }
 
-// ---- Meetings ----
+// ---- Meetings (read-only Webex mirror) ----
 
-async function fetchMeetings() {
-  return delay(mockMeetings)
+type RawMeeting = {
+  id: string
+  title: string
+  start: string
+  end: string
+  join_url?: string | null
+  attendees?: { name?: string; email?: string }[]
+  agenda?: string | null
+}
+
+export function toMeeting(row: RawMeeting): Meeting {
+  return {
+    id: row.id,
+    title: row.title,
+    start: row.start,
+    end: row.end,
+    join_url: row.join_url || undefined,
+    attendees: (row.attendees ?? []).map((person) => ({
+      name: person.name || person.email || 'Guest',
+      email: person.email || person.name || '',
+    })),
+    is_organizer: false,
+    agenda: row.agenda || undefined,
+  }
+}
+
+export async function listMeetings(): Promise<Meeting[]> {
+  const rows = await callTool<RawMeeting[]>('list_webex_meetings')
+  return rows.map(toMeeting)
 }
 
 export function useMeetings() {
-  return useQuery({ queryKey: ['meetings'], queryFn: fetchMeetings })
+  return useQuery({ queryKey: ['meetings'], queryFn: listMeetings })
 }
 
 export function useTodayMeetings() {
   return useQuery({
     queryKey: ['meetings', 'today'],
     queryFn: async () => {
-      const meetings = await fetchMeetings()
+      const meetings = await listMeetings()
       return meetings
         .filter((m) => isToday(m.start))
         .sort((a, b) => a.start.localeCompare(b.start))
@@ -178,20 +199,127 @@ export function useTodayMeetings() {
 
 // ---- Webex ----
 
-async function fetchWebexMessages() {
-  return delay(mockWebexMessages)
+type RawMessage = {
+  id: string
+  space_id: string
+  space_name: string
+  sender_name: string
+  sender_email?: string | null
+  is_dm: boolean | number
+  is_mention: boolean | number
+  is_unread: boolean | number
+  preview: string
+  occurred_at: string
+  deep_link?: string | null
 }
 
-async function fetchWebexSpaces() {
-  return delay(mockWebexSpaces)
+type RawSpace = {
+  id: string
+  name: string
+  is_dm: boolean | number
+  unread_count: number
+  last_activity?: string | null
+  members_count: number
+}
+
+export function toWebexMessage(row: RawMessage): WebexMessage {
+  return {
+    id: row.id,
+    from: { name: row.sender_name, email: row.sender_email || '' },
+    space: row.space_name,
+    space_id: row.space_id,
+    is_dm: Boolean(row.is_dm),
+    is_mention: Boolean(row.is_mention),
+    is_unread: Boolean(row.is_unread),
+    preview: row.preview,
+    ts: row.occurred_at,
+    url: row.deep_link || undefined,
+  }
+}
+
+export function toWebexSpace(row: RawSpace): WebexSpace {
+  return {
+    id: row.id,
+    name: row.name,
+    is_dm: Boolean(row.is_dm),
+    unread_count: row.unread_count,
+    last_activity: row.last_activity || '',
+    members_count: row.members_count,
+  }
 }
 
 export function useWebexMessages() {
-  return useQuery({ queryKey: ['webex', 'messages'], queryFn: fetchWebexMessages })
+  return useQuery({
+    queryKey: ['webex', 'messages'],
+    queryFn: async () => {
+      const rows = await callTool<RawMessage[]>('list_webex_messages')
+      return rows.map(toWebexMessage)
+    },
+  })
 }
 
 export function useWebexSpaces() {
-  return useQuery({ queryKey: ['webex', 'spaces'], queryFn: fetchWebexSpaces })
+  return useQuery({
+    queryKey: ['webex', 'spaces'],
+    queryFn: async () => {
+      const rows = await callTool<RawSpace[]>('list_webex_spaces')
+      return rows.map(toWebexSpace)
+    },
+  })
+}
+
+export type WebexServiceStatus = {
+  authenticated: boolean
+  meetings_count: number
+  messages_count: number
+  login_path: string
+}
+
+export function useWebexStatus() {
+  return useQuery({
+    queryKey: ['webex', 'status'],
+    queryFn: () => callTool<WebexServiceStatus>('webex_status'),
+    staleTime: 30_000,
+    retry: 1,
+  })
+}
+
+export function useWebexAttention() {
+  return useQuery({
+    queryKey: ['webex', 'attention'],
+    queryFn: async () => {
+      const rows = await callTool<RawMessage[]>('webex_attention', { limit: 20 })
+      return rows.map(toWebexMessage)
+    },
+  })
+}
+
+export type WebexSyncResult = {
+  meetings: number
+  spaces: number
+  messages: number
+  errors: string[]
+}
+
+export function useSyncWebex() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => callTool<WebexSyncResult>('sync_webex'),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['webex'] })
+      queryClient.invalidateQueries({ queryKey: ['meetings'] })
+    },
+  })
+}
+
+export type WebexSummary = {
+  summary: string
+  citations: string[]
+  mode: string
+}
+
+export function summarizeWebexSpace(spaceId: string): Promise<WebexSummary> {
+  return callTool<WebexSummary>('summarize_webex_space', { space_id: spaceId })
 }
 
 // ---- JIRA (pull-only tools on the unified sb MCP) ----

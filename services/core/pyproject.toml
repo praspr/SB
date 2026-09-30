@@ -10,6 +10,7 @@ dependencies = [
     "pyyaml>=6",
     "sb-jira",
     "sb-todos",
+    "sb-webex",
     "uvicorn[standard]>=0.34",
 ]
 
@@ -32,3 +33,4 @@ pythonpath = ["src"]
 [tool.uv.sources]
 sb-jira = { path = "../jira", editable = true }
 sb-todos = { path = "../todos", editable = true }
+sb-webex = { path = "../webex", editable = true }

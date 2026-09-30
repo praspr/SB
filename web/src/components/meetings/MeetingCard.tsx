@@ -47,7 +47,7 @@ export function MeetingCard({ meeting }: { meeting: Meeting }) {
         <div className="flex -space-x-2">
           {meeting.attendees.slice(0, 4).map((a) => (
             <div
-              key={a.email}
+              key={a.email || a.name}
               title={a.name}
               className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-bg-panel bg-accent-800 text-[10px] font-semibold text-text-primary"
             >

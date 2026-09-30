@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from contextlib import AsyncExitStack, asynccontextmanager
 
+import html
+
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse, RedirectResponse
 
 from . import __version__
 from .config import settings
@@ -42,6 +45,30 @@ app = FastAPI(
 @app.get("/health")
 async def health() -> dict:
     return await system_status()
+
+
+@app.get("/webex/login")
+def webex_login() -> RedirectResponse:
+    """Start Webex OAuth. Tokens are stored in the keychain, not in this redirect."""
+    from sb_webex.client import begin_login
+
+    redirect = f"http://{settings.host}:{settings.port}/webex/callback"
+    return RedirectResponse(begin_login(redirect))
+
+
+@app.get("/webex/callback")
+def webex_callback(code: str = "", state: str = "") -> HTMLResponse:
+    """Finish Webex OAuth. The authorization code is not written to the page."""
+    from sb_webex.client import WebexAuthError, finish_login
+
+    try:
+        finish_login(code, state)
+    except WebexAuthError as exc:
+        return HTMLResponse(
+            f"<p>{html.escape(str(exc))}</p>",
+            status_code=400,
+        )
+    return HTMLResponse("<p>Webex is signed in. Return to the dashboard and sync.</p>")
 
 
 @app.api_route(

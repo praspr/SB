@@ -181,15 +181,21 @@ today's work, and a read-only cited chat over local second-brain data.
 
 | Route | Data | Status |
 |---|---|---|
-| `/` — Landing | Usage tiles · todo/JIRA/signal charts · today's work · cited local chat | live except meetings |
+| `/` — Landing | Usage tiles · todo/JIRA/signal charts · today's work · cited local chat | live |
 | `/status` | Unified MCP, database, tool/prompt/resource counts | live |
 | `/skills` | Indexed project and system skills | live |
 | `/signals` | Local evidence ledger and adapter state | live |
 | `/today`, `/wrap`, `/standup` | Daily chief-of-staff rituals | live |
 | `/todos` | sb-todos SQLite (add + complete work end-to-end) | live |
 | `/jira` | pull-only JIRA mirror from `ciq/docs/jira/tickets/` | live |
-| `/meetings` | Mock data | placeholder |
-| `/webex` | Mock data | placeholder |
+| `/meetings` | Mirrored Webex meetings and join links | live after sign-in and sync |
+| `/webex` | Attention, spaces, and cited space summaries | live after sign-in and sync |
+
+Webex uses the hosted MCP at `https://aicoding-mcp-webexapis.cisco.com/mcp/`.
+Sign in once at `http://127.0.0.1:8787/webex/login`. The client is public PKCE;
+tokens stay in the macOS keychain under service `sb`. Sync is manual and
+read-only. Python trusts the Cisco certificate chain through the operating-system
+store.
 
 Shortcuts: `⌘K` opens the command palette, `⌘N` jumps to `/todos` and focuses
 the quick-add input.

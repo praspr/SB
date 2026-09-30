@@ -12,7 +12,9 @@ from .store import signals as signal_store
 
 mcp = FastMCP("sb-chat")
 
-_CITATION_RE = re.compile(r"\[(?:signal:\d+|todo:\d+|JIRA:[A-Z][A-Z0-9]*-\d+)\]")
+_CITATION_RE = re.compile(
+    r"\[(?:signal:\d+|todo:\d+|JIRA:[A-Z][A-Z0-9]*-\d+|webex:[A-Za-z0-9+/=_-]+)\]"
+)
 _MAX_QUESTION_CHARS = 1000
 _MAX_ITEMS_PER_SOURCE = 12
 _MAX_DETAIL_CHARS = 400
@@ -45,6 +47,7 @@ def _gather_sources(question: str) -> list[dict]:
 
     from .config import settings
     from .store.db import connect as core_connect
+    from .webex_store import list_meetings, list_messages
 
     sources: list[dict] = []
 
@@ -78,6 +81,26 @@ def _gather_sources(question: str) -> list[dict]:
 
     with closing(core_connect(settings.db_path)) as conn:
         signals = signal_store.search_signals(conn, limit=50)
+        webex_rows = list_messages(conn)[:30]
+        meeting_rows = list_meetings(conn)[:10]
+    sources.extend(
+        {
+            "citation": f"[webex:{row['id']}]",
+            "title": f"{row['sender_name']}: {row['preview']}",
+            "detail": f"{row['space_name']}; {row['occurred_at']}",
+            "occurred_at": row["occurred_at"],
+        }
+        for row in webex_rows
+    )
+    sources.extend(
+        {
+            "citation": f"[webex:{row['id']}]",
+            "title": row["title"],
+            "detail": f"meeting {row.get('start') or ''}",
+            "occurred_at": row.get("start") or "",
+        }
+        for row in meeting_rows
+    )
     sources.extend(
         {
             "citation": f"[signal:{signal.id}]",
@@ -92,7 +115,7 @@ def _gather_sources(question: str) -> list[dict]:
     )
 
     grouped: list[dict] = []
-    for prefix in ("[todo:", "[JIRA:", "[signal:"):
+    for prefix in ("[todo:", "[JIRA:", "[signal:", "[webex:"):
         grouped.extend(
             _rank(
                 [item for item in sources if item["citation"].startswith(prefix)],

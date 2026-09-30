@@ -11,6 +11,7 @@
 
 ### Added
 
+- Add a read-only Webex mirror on the unified MCP. Sign-in uses the hosted `webexapis` MCP with PKCE, tokens stay in the keychain, and sync only calls tools that read meetings, spaces, and message previews. The Meetings and Webex pages, landing attention count, daily plan, standup, and `ask_sb` citations use that local mirror.
 - Add compact landing-page charts for todo completion, JIRA status, and signal sources, with drill-down links to filtered views.
 - Add a read-only `ask_sb` MCP tool and landing-page chat grounded in bounded local todos, JIRA tickets, and signals. Answers use validated citations and fall back deterministically when the LLM is unavailable or returns unsupported claims.
 - Scaffold `sb-core` on `127.0.0.1:8787` with a metadata-only SQLite schema, `system_status`, `/health`, and a `/status` page. Domain REST routes stay absent. Launchd plist is prepared; login cutover is documented and not applied.

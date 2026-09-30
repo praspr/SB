@@ -29,11 +29,13 @@ def _mount_domains() -> None:
     from .skills import register_skill_tools
     from .ritual_tools import mcp as ritual_mcp
     from .sync_tools import mcp as sync_mcp
+    from .webex_tools import mcp as webex_mcp
 
     register_skill_tools(mcp)
     mcp.mount(chat_mcp)
     mcp.mount(sync_mcp)
     mcp.mount(ritual_mcp)
+    mcp.mount(webex_mcp)
 
 
 _mount_domains()

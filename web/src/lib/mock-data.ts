@@ -37,6 +37,7 @@ export type WebexMessage = {
   is_unread: boolean
   preview: string // first ~100 chars
   ts: string // ISO datetime
+  url?: string
 }
 
 export type WebexSpace = {

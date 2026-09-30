@@ -1,6 +1,7 @@
 import { CheckCircle2 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { useTodayTasks, useTodayMeetings, useTasks, useJiraTickets } from '@/lib/queries'
+import { Link } from 'react-router-dom'
+import { useTodayTasks, useTodayMeetings, useTasks, useJiraTickets, useWebexAttention } from '@/lib/queries'
 import { TaskList } from '@/components/tasks/TaskList'
 import { MeetingList } from '@/components/meetings/MeetingList'
 import { UsageStats } from '@/components/landing/UsageStats'
@@ -11,6 +12,7 @@ import { searchSignals } from '@/lib/signals'
 export function LandingPage() {
   const { data: tasks, isLoading: tasksLoading } = useTodayTasks()
   const { data: meetings, isLoading: meetingsLoading } = useTodayMeetings()
+  const attention = useWebexAttention()
   const allTasks = useTasks()
   const tickets = useJiraTickets()
   const signals = useQuery({
@@ -63,6 +65,11 @@ export function LandingPage() {
             </div>
             <div className="mt-4">
               <MeetingList meetings={meetings} isLoading={meetingsLoading} emptyBody="Nothing on today's calendar." />
+              {attention.data && attention.data.length > 0 ? (
+                <Link to="/webex" className="mt-3 inline-block text-13 text-text-secondary underline">
+                  {attention.data.length} Webex messages need attention
+                </Link>
+              ) : null}
             </div>
           </section>
         </div>

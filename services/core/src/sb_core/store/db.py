@@ -134,6 +134,49 @@ def _m6_proposals(conn: sqlite3.Connection) -> None:
     _add_column(conn, "sb_proposals", "updated_at", "TEXT")
 
 
+def _m7_webex(conn: sqlite3.Connection) -> None:
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS sb_webex_meetings (
+          id TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          start_at TEXT NOT NULL,
+          end_at TEXT NOT NULL,
+          join_url TEXT,
+          organizer TEXT,
+          attendees TEXT NOT NULL DEFAULT '[]',
+          agenda TEXT,
+          synced_at TEXT NOT NULL
+        )
+        """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS sb_webex_spaces (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          is_dm INTEGER NOT NULL DEFAULT 0,
+          unread_count INTEGER NOT NULL DEFAULT 0,
+          last_activity TEXT,
+          members_count INTEGER NOT NULL DEFAULT 0,
+          synced_at TEXT NOT NULL
+        )
+        """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS sb_webex_messages (
+          id TEXT PRIMARY KEY,
+          space_id TEXT NOT NULL,
+          space_name TEXT NOT NULL,
+          sender_name TEXT NOT NULL,
+          sender_email TEXT,
+          is_dm INTEGER NOT NULL DEFAULT 0,
+          is_mention INTEGER NOT NULL DEFAULT 0,
+          is_unread INTEGER NOT NULL DEFAULT 0,
+          preview TEXT NOT NULL,
+          occurred_at TEXT NOT NULL,
+          deep_link TEXT,
+          synced_at TEXT NOT NULL
+        )
+        """)
+
+
 _MIGRATIONS: list[tuple[int, Callable[[sqlite3.Connection], None]]] = [
     (1, _m1_metadata),
     (2, _m2_skills),
@@ -141,6 +184,7 @@ _MIGRATIONS: list[tuple[int, Callable[[sqlite3.Connection], None]]] = [
     (4, _m4_sync_state),
     (5, _m5_daily),
     (6, _m6_proposals),
+    (7, _m7_webex),
 ]
 
 _REQUIRED_COLUMNS: dict[str, dict[str, str]] = {

@@ -22,6 +22,11 @@ export function MessagePreview({ message }: { message: WebexMessage }) {
           <span className="ml-auto shrink-0 text-12 tabular text-text-muted">{formatTime(message.ts)}</span>
         </div>
         <p className="mt-1 truncate text-13 text-text-secondary">{message.preview}</p>
+        {message.url ? (
+          <a href={message.url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-12 text-text-secondary underline">
+            Open in Webex
+          </a>
+        ) : null}
       </div>
       {message.is_unread && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-accent-500" />}
     </div>
