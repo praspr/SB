@@ -1,6 +1,5 @@
 import { callTool } from './mcp'
 import type { Meeting, Task } from './mock-data'
-import type { JiraTicket } from './mock-data'
 import type { LedgerEntry, LedgerLogInput, LedgerLogResult } from './ledger'
 import { ledgerLog } from './ledger'
 
@@ -34,6 +33,11 @@ export type PreMeetingContext = {
   recent_ledger: LedgerEntry[]
   related_jiras: string[]
   open_todos: Array<Pick<Task, 'id' | 'title' | 'priority'>>
+}
+
+export type MeetingNotesToast = {
+  proposal_ids: number[]
+  draft_count: number
 }
 
 export type ProposeMeetingNotesResult = {

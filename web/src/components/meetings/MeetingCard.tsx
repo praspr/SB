@@ -2,7 +2,13 @@ import { Video, MapPin, Users, Crown } from 'lucide-react'
 import type { Meeting } from '@/lib/mock-data'
 import { formatTime, initials } from '@/lib/utils'
 
-export function MeetingCard({ meeting }: { meeting: Meeting }) {
+export function MeetingCard({
+  meeting,
+  children,
+}: {
+  meeting: Meeting
+  children?: React.ReactNode
+}) {
   return (
     <div className="rounded-lg border border-border-subtle bg-bg-panel p-4 transition-colors duration-fast ease-out hover:border-border-strong hover:bg-bg-elevated">
       <div className="flex items-start justify-between gap-3">
@@ -58,6 +64,7 @@ export function MeetingCard({ meeting }: { meeting: Meeting }) {
         <span className="flex items-center gap-1 text-12 text-text-muted">
           <Users size={11} /> {meeting.attendees.length}
         </span>
+        {children ? <div className="ml-auto">{children}</div> : null}
       </div>
     </div>
   )
