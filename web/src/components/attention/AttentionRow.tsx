@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ExternalLink, Loader2, Reply } from 'lucide-react'
+import { Ban, CheckCircle2, ExternalLink, Loader2, Reply } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,9 +15,10 @@ function tone(staleness?: number | null) {
 type AttentionRowProps = {
   item: AttentionItem
   onLog: (input: { project: string; action_verb: string; summary: string; body?: string }) => Promise<unknown>
+  onHandle: (action: 'completed' | 'ignored') => void
 }
 
-export function AttentionRow({ item, onLog }: AttentionRowProps) {
+export function AttentionRow({ item, onLog, onHandle }: AttentionRowProps) {
   const [open, setOpen] = useState(false)
   const [project, setProject] = useState('sb')
   const [verb, setVerb] = useState(item.suggested_action_verb || 'Discussed')
@@ -41,7 +42,15 @@ export function AttentionRow({ item, onLog }: AttentionRowProps) {
         </div>
         <p className="mt-1 line-clamp-2 text-13 leading-6 text-text-secondary">{item.preview}</p>
       </div>
-      <div className="flex shrink-0 items-start gap-2">
+      <div className="flex shrink-0 flex-wrap items-start justify-end gap-2">
+        <Button variant="secondary" className="gap-1.5" onClick={() => onHandle('completed')}>
+          <CheckCircle2 size={14} />
+          Mark done
+        </Button>
+        <Button variant="secondary" className="gap-1.5" onClick={() => onHandle('ignored')}>
+          <Ban size={14} />
+          Ignore
+        </Button>
         <Button
           variant="secondary"
           onClick={() =>

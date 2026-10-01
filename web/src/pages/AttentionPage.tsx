@@ -1,10 +1,11 @@
 import { useMemo } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Inbox } from 'lucide-react'
 import { AttentionRow } from '@/components/attention/AttentionRow'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { logAttentionToLedger, webexAttentionFiltered, type AttentionItem } from '@/lib/triage'
 import { useToast } from '@/lib/useToast'
+import { ATTENTION_QUERY_KEY, markHandled } from '@/lib/webex-handled'
 
 function sectionTitle(kind: string) {
   if (kind === 'mention') return 'Mentions'
@@ -19,11 +20,13 @@ export function AttentionView({
   loading,
   error,
   onLog,
+  onHandle,
 }: {
   items: AttentionItem[]
   loading?: boolean
   error?: string
   onLog: (item: AttentionItem, input: { project: string; action_verb: string; summary: string; body?: string }) => Promise<unknown>
+  onHandle: (item: AttentionItem, action: 'completed' | 'ignored') => void
 }) {
   const grouped = useMemo(() => {
     return ['mention', 'dm', 'reply-to-me', 'question', 'message'].map((kind) => ({ kind, items: items.filter((item) => item.triage_kind === kind) }))
@@ -56,6 +59,7 @@ export function AttentionView({
                   key={item.id}
                   item={item}
                   onLog={(input) => onLog(item, input)}
+                  onHandle={(action) => onHandle(item, action)}
                 />
               ))}
             </section>
@@ -67,11 +71,35 @@ export function AttentionView({
 }
 
 export function AttentionPage() {
+  const queryClient = useQueryClient()
   const toast = useToast((s) => s.show)
   const attention = useQuery({
-    queryKey: ['triage', 'attention'],
+    queryKey: ATTENTION_QUERY_KEY,
     queryFn: () => webexAttentionFiltered(30),
     staleTime: 30_000,
+  })
+  const handle = useMutation({
+    mutationFn: async ({ item, action }: { item: AttentionItem; action: 'completed' | 'ignored' }) => {
+      return markHandled(item.id, action)
+    },
+    onMutate: async ({ item }) => {
+      await queryClient.cancelQueries({ queryKey: ATTENTION_QUERY_KEY })
+      const previous = queryClient.getQueryData<AttentionItem[]>(ATTENTION_QUERY_KEY)
+      queryClient.setQueryData<AttentionItem[]>(ATTENTION_QUERY_KEY, (current) =>
+        (current ?? []).filter((row) => row.id !== item.id),
+      )
+      return { previous }
+    },
+    onSuccess: ({ action }) => {
+      toast({ kind: 'success', message: action === 'completed' ? 'Marked done' : 'Ignored' })
+    },
+    onError: (_error, _variables, context) => {
+      queryClient.setQueryData(ATTENTION_QUERY_KEY, context?.previous ?? [])
+      toast({ kind: 'error', message: 'Could not update that attention item.' })
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ATTENTION_QUERY_KEY })
+    },
   })
   const log = useMutation({
     mutationFn: async ({ item, input }: { item: AttentionItem; input: { project: string; action_verb: string; summary: string; body?: string } }) => {
@@ -95,13 +123,13 @@ export function AttentionPage() {
       toast({ kind: 'success', message: `Logged as [ledger:${result.id}]` })
     },
   })
-
   return (
     <AttentionView
-      items={attention.data ?? []}
+      items={useMemo(() => attention.data ?? [], [attention.data])}
       loading={attention.isLoading}
       error={attention.isError ? 'Could not load the attention inbox.' : log.isError ? 'Could not log that item to the ledger.' : undefined}
       onLog={(item, input) => log.mutateAsync({ item, input })}
+      onHandle={(item, action) => handle.mutate({ item, action })}
     />
   )
 }

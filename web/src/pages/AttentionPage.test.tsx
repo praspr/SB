@@ -12,10 +12,15 @@ vi.mock('@/lib/triage', async () => {
   }
 })
 
+vi.mock('@/lib/webex-handled', () => ({
+  ATTENTION_QUERY_KEY: ['triage', 'attention'],
+  markHandled: vi.fn(),
+}))
+
 describe('attention page', () => {
   it('shows inbox zero', () => {
     const html = renderToStaticMarkup(
-      <AttentionView items={[]} onLog={async () => undefined} />
+        <AttentionView items={[]} onLog={async () => undefined} onHandle={() => undefined} />
     )
     expect(html).toContain('Inbox zero')
     expect(html).toContain('Nothing needs your attention right now.')
@@ -42,12 +47,15 @@ describe('attention page', () => {
           },
         ]}
         onLog={async () => undefined}
+        onHandle={() => undefined}
       />
     )
     expect(html).toContain('Mentions')
     expect(html).toContain('Ada')
     expect(html).toContain('Log to ledger')
     expect(html).toContain('Create todo')
+    expect(html).toContain('Mark done')
+    expect(html).toContain('Ignore')
   })
 
   it('shows general Webex messages instead of dropping them', () => {
@@ -69,6 +77,7 @@ describe('attention page', () => {
           },
         ]}
         onLog={async () => undefined}
+        onHandle={() => undefined}
       />
     )
     expect(html).toContain('Messages')
@@ -98,6 +107,7 @@ describe('attention page', () => {
           },
         ]}
         onLog={async () => undefined}
+        onHandle={() => undefined}
       />
     )
     expect(html).toContain('Replies')
