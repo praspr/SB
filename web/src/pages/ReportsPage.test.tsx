@@ -32,6 +32,10 @@ describe('reports page', () => {
           onUntil={() => undefined}
           query=""
           onQuery={() => undefined}
+          perfShape="full"
+          onPerfShape={() => undefined}
+          perfVoice="first-person"
+          onPerfVoice={() => undefined}
           projects={[]}
           recentRuns={[]}
           activeTab="rituals"
@@ -39,6 +43,7 @@ describe('reports page', () => {
           onRun={() => undefined}
           onCopy={() => undefined}
           onSave={() => undefined}
+          onSaveToCiq={() => undefined}
         />
       )
     )
@@ -68,6 +73,10 @@ describe('reports page', () => {
           onUntil={() => undefined}
           query="release"
           onQuery={() => undefined}
+          perfShape="full"
+          onPerfShape={() => undefined}
+          perfVoice="first-person"
+          onPerfVoice={() => undefined}
           projects={[{ project: 'sb' }]}
           report={{ markdown: '# Daily report\n\n- Shipped release [ledger:12]\n', citations: [12] }}
           citedEntries={[
@@ -91,6 +100,7 @@ describe('reports page', () => {
           onRun={() => undefined}
           onCopy={() => undefined}
           onSave={() => undefined}
+          onSaveToCiq={() => undefined}
         />
       )
     )
@@ -99,5 +109,83 @@ describe('reports page', () => {
     expect(html).toContain('Save as ledger note')
     expect(html).toContain('Referenced ledger entries')
     expect(html).toContain('ledger:12')
+  })
+
+  it('shows the perf check-in template with shape/voice pickers', () => {
+    const html = renderToStaticMarkup(
+      withClient(
+        <ReportsView
+          template="perf_checkin"
+          onTemplate={() => undefined}
+          project=""
+          onProject={() => undefined}
+          date="2026-09-30"
+          onDate={() => undefined}
+          month="2026-09"
+          onMonth={() => undefined}
+          since="2026-09-01"
+          until="2026-09-30"
+          onSince={() => undefined}
+          onUntil={() => undefined}
+          query=""
+          onQuery={() => undefined}
+          perfShape="full"
+          onPerfShape={() => undefined}
+          perfVoice="first-person"
+          onPerfVoice={() => undefined}
+          projects={[]}
+          recentRuns={[]}
+          activeTab="rituals"
+          onTabChange={() => undefined}
+          onRun={() => undefined}
+          onCopy={() => undefined}
+          onSave={() => undefined}
+          onSaveToCiq={() => undefined}
+        />
+      )
+    )
+    expect(html).toContain('Perf check-in')
+    expect(html).toContain('Full weekly')
+    expect(html).toContain('One improvement')
+    expect(html).toContain('First person')
+    expect(html).toContain('Third person')
+  })
+
+  it('shows the Save to ciq CHANGELOG button for a perf check-in report', () => {
+    const html = renderToStaticMarkup(
+      withClient(
+        <ReportsView
+          template="perf_checkin"
+          onTemplate={() => undefined}
+          project=""
+          onProject={() => undefined}
+          date="2026-09-30"
+          onDate={() => undefined}
+          month="2026-09"
+          onMonth={() => undefined}
+          since="2026-09-01"
+          until="2026-09-30"
+          onSince={() => undefined}
+          onUntil={() => undefined}
+          query=""
+          onQuery={() => undefined}
+          perfShape="full"
+          onPerfShape={() => undefined}
+          perfVoice="first-person"
+          onPerfVoice={() => undefined}
+          projects={[]}
+          report={{ markdown: '# Weekly check-in\n\nDid good work.', citations: [] }}
+          recentRuns={[]}
+          activeTab="rituals"
+          onTabChange={() => undefined}
+          onRun={() => undefined}
+          onCopy={() => undefined}
+          onSave={() => undefined}
+          onSaveToCiq={() => undefined}
+        />
+      )
+    )
+    expect(html).toContain('Save to ciq CHANGELOG')
+    expect(html).not.toContain('Email draft')
   })
 })

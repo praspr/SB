@@ -42,3 +42,12 @@ export function reportQuery(input: {
 }): Promise<ReportResult> {
   return callTool<ReportResult>('report_query', input)
 }
+
+export type PerfCheckinShape = 'full' | 'one-improvement'
+export type PerfCheckinVoice = 'first-person' | 'third-person'
+
+export function reportPerfCheckin(
+  args: { shape?: PerfCheckinShape; voice?: PerfCheckinVoice } = {}
+): Promise<ReportResult> {
+  return callTool<ReportResult>('report_perf_checkin', args)
+}

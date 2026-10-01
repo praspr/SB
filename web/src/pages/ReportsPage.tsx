@@ -4,7 +4,16 @@ import { History, Play } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ledgerLog, ledgerProjects, ledgerSearch } from '@/lib/ledger'
-import { reportDaily, reportMonthly, reportQuery, reportWeekly, type ReportResult } from '@/lib/reports'
+import {
+  reportDaily,
+  reportMonthly,
+  reportPerfCheckin,
+  reportQuery,
+  reportWeekly,
+  type PerfCheckinShape,
+  type PerfCheckinVoice,
+  type ReportResult,
+} from '@/lib/reports'
 import { reportStandup, reportToday, reportWrap } from '@/lib/triage'
 import { ReportViewer } from '@/components/reports/ReportViewer'
 import { Button } from '@/components/ui/button'
@@ -13,9 +22,18 @@ import type { LedgerEntry } from '@/lib/ledger'
 import { useToast } from '@/lib/useToast'
 import { cn } from '@/lib/utils'
 
-type ReportTemplate = 'daily' | 'weekly' | 'monthly' | 'query' | 'today' | 'wrap' | 'standup'
+type ReportTemplate = 'daily' | 'weekly' | 'monthly' | 'query' | 'today' | 'wrap' | 'standup' | 'perf_checkin'
 
-const VALID_TEMPLATES: ReportTemplate[] = ['daily', 'weekly', 'monthly', 'query', 'today', 'wrap', 'standup']
+const VALID_TEMPLATES: ReportTemplate[] = [
+  'daily',
+  'weekly',
+  'monthly',
+  'query',
+  'today',
+  'wrap',
+  'standup',
+  'perf_checkin',
+]
 
 type RecentRun = {
   template: ReportTemplate
@@ -26,11 +44,19 @@ type RecentRun = {
 
 type ReportsTab = 'rituals' | 'reports'
 
-const RITUAL_TEMPLATES: ReportTemplate[] = ['today', 'wrap', 'standup', 'daily']
+const RITUAL_TEMPLATES: ReportTemplate[] = ['today', 'wrap', 'standup', 'daily', 'perf_checkin']
 const REPORT_TEMPLATES: ReportTemplate[] = ['daily', 'weekly', 'monthly', 'query']
 
 function tabForTemplate(template: ReportTemplate): ReportsTab {
-  return template === 'today' || template === 'wrap' || template === 'standup' ? 'rituals' : 'reports'
+  return template === 'today' || template === 'wrap' || template === 'standup' || template === 'perf_checkin'
+    ? 'rituals'
+    : 'reports'
+}
+
+function templateLabel(value: ReportTemplate): string {
+  if (value === 'daily') return 'Brief'
+  if (value === 'perf_checkin') return 'Perf check-in'
+  return value
 }
 
 type ReportsViewProps = {
@@ -48,6 +74,10 @@ type ReportsViewProps = {
   onUntil: (value: string) => void
   query: string
   onQuery: (value: string) => void
+  perfShape: PerfCheckinShape
+  onPerfShape: (value: PerfCheckinShape) => void
+  perfVoice: PerfCheckinVoice
+  onPerfVoice: (value: PerfCheckinVoice) => void
   projects: Array<{ project: string }>
   report?: ReportResult | null
   citedEntries?: LedgerEntry[]
@@ -55,11 +85,13 @@ type ReportsViewProps = {
   error?: string
   recentRuns: RecentRun[]
   savePending?: boolean
+  savingToCiq?: boolean
   activeTab: ReportsTab
   onTabChange: (value: ReportsTab) => void
   onRun: () => void
   onCopy: () => void
   onSave: () => void
+  onSaveToCiq: () => void
 }
 
 const RECENT_RUNS_KEY = 'sb-report-runs'
@@ -94,6 +126,10 @@ export function ReportsView({
   onUntil,
   query,
   onQuery,
+  perfShape,
+  onPerfShape,
+  perfVoice,
+  onPerfVoice,
   projects,
   report,
   citedEntries,
@@ -101,11 +137,13 @@ export function ReportsView({
   error,
   recentRuns,
   savePending,
+  savingToCiq,
   activeTab,
   onTabChange,
   onRun,
   onCopy,
   onSave,
+  onSaveToCiq,
 }: ReportsViewProps) {
   return (
     <div className="space-y-5">
@@ -139,7 +177,7 @@ export function ReportsView({
                           : 'border-border-subtle bg-black/20 text-text-secondary hover:border-border-strong hover:text-text-primary'
                       )}
                     >
-                      {value === 'daily' ? 'Brief' : value}
+                      {templateLabel(value)}
                     </button>
                   ))}
                 </div>
@@ -220,6 +258,51 @@ export function ReportsView({
               )}
             </div>
 
+            {template === 'perf_checkin' && (
+              <div className="flex flex-wrap gap-4">
+                <div className="space-y-1.5">
+                  <span className="block text-12 uppercase tracking-[0.18em] text-text-muted">Shape</span>
+                  <div className="flex gap-2">
+                    {(['full', 'one-improvement'] as PerfCheckinShape[]).map((value) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => onPerfShape(value)}
+                        className={cn(
+                          'rounded-lg border px-3 py-1.5 text-13 transition-colors duration-fast ease-out',
+                          perfShape === value
+                            ? 'border-border-strong bg-accent-500/15 text-text-primary'
+                            : 'border-border-subtle bg-black/20 text-text-secondary hover:border-border-strong hover:text-text-primary'
+                        )}
+                      >
+                        {value === 'full' ? 'Full weekly' : 'One improvement'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <span className="block text-12 uppercase tracking-[0.18em] text-text-muted">Voice</span>
+                  <div className="flex gap-2">
+                    {(['first-person', 'third-person'] as PerfCheckinVoice[]).map((value) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => onPerfVoice(value)}
+                        className={cn(
+                          'rounded-lg border px-3 py-1.5 text-13 transition-colors duration-fast ease-out',
+                          perfVoice === value
+                            ? 'border-border-strong bg-accent-500/15 text-text-primary'
+                            : 'border-border-subtle bg-black/20 text-text-secondary hover:border-border-strong hover:text-text-primary'
+                        )}
+                      >
+                        {value === 'first-person' ? 'First person' : 'Third person'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center gap-2">
               <Button variant="primary" onClick={onRun}>
                 <Play size={14} />
@@ -257,10 +340,12 @@ export function ReportsView({
         error={error}
         canSave={Boolean(project && report?.markdown)}
         savePending={savePending}
+        savingToCiq={savingToCiq}
         template={template}
         date={date}
         onCopy={onCopy}
         onSave={onSave}
+        onSaveToCiq={onSaveToCiq}
       />
     </div>
   )
@@ -280,6 +365,8 @@ export function ReportsPage() {
   const [since, setSince] = useState(today)
   const [until, setUntil] = useState(today)
   const [query, setQuery] = useState('')
+  const [perfShape, setPerfShape] = useState<PerfCheckinShape>('full')
+  const [perfVoice, setPerfVoice] = useState<PerfCheckinVoice>('first-person')
   const [report, setReport] = useState<ReportResult | null>(null)
   const [error, setError] = useState<string>()
   const [recentRuns, setRecentRuns] = useState<RecentRun[]>(() => loadRecentRuns())
@@ -307,6 +394,7 @@ export function ReportsPage() {
       if (template === 'today') return reportToday(date)
       if (template === 'wrap') return reportWrap()
       if (template === 'standup') return reportStandup(date)
+      if (template === 'perf_checkin') return reportPerfCheckin({ shape: perfShape, voice: perfVoice })
       return reportQuery({
         q: query,
         project: project || undefined,
@@ -357,6 +445,30 @@ export function ReportsPage() {
     },
   })
 
+  const saveToCiq = useMutation({
+    mutationFn: async () => {
+      if (!report?.markdown) return null
+      const firstLine = report.markdown.split('\n').find((line) => line.trim().length > 0) || ''
+      const gist = firstLine.slice(0, 300)
+      const voiceSuffix = perfVoice === 'third-person' ? ', third person' : ''
+      const summary = `Drafted weekly check-in answer (under 500 chars, high-level${voiceSuffix}): ${gist}`
+      return ledgerLog({
+        project: 'ciq',
+        action_verb: 'Drafted',
+        summary,
+        body: report.markdown,
+        source_harness: 'reports-perf',
+        refs: [{ kind: 'report', value: 'perf_checkin' }],
+      })
+    },
+    onSuccess: (result) => {
+      if (result) showToast({ kind: 'success', message: 'Saved to ciq CHANGELOG' })
+    },
+    onError: (err: Error) => {
+      showToast({ kind: 'error', message: err.message || 'Could not save to ciq CHANGELOG.' })
+    },
+  })
+
   const viewerError = error || (projects.isError ? 'Could not load enrolled projects.' : undefined)
   const allProjects = useMemo(() => projects.data ?? [], [projects.data])
 
@@ -379,6 +491,10 @@ export function ReportsPage() {
       onUntil={setUntil}
       query={query}
       onQuery={setQuery}
+      perfShape={perfShape}
+      onPerfShape={setPerfShape}
+      perfVoice={perfVoice}
+      onPerfVoice={setPerfVoice}
       projects={allProjects}
       report={report}
       citedEntries={citedEntries.data}
@@ -386,6 +502,7 @@ export function ReportsPage() {
       error={viewerError}
       recentRuns={recentRuns}
       savePending={saveNote.isPending}
+      savingToCiq={saveToCiq.isPending}
       activeTab={activeTab}
       onTabChange={setActiveTab}
       onRun={() => runReport.mutate()}
@@ -396,6 +513,7 @@ export function ReportsPage() {
         }
       }}
       onSave={() => saveNote.mutate()}
+      onSaveToCiq={() => saveToCiq.mutate()}
     />
   )
 }

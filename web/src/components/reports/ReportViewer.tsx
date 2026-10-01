@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Copy, FilePlus2, Link2, Mail } from 'lucide-react'
+import { Copy, FilePlus2, Link2, Mail, UploadCloud } from 'lucide-react'
 import type { LedgerEntry } from '@/lib/ledger'
 import type { ReportResult } from '@/lib/reports'
 import { Button } from '@/components/ui/button'
@@ -13,10 +13,12 @@ type ReportViewerProps = {
   error?: string
   canSave?: boolean
   savePending?: boolean
+  savingToCiq?: boolean
   template?: string
   date?: string
   onCopy?: () => void
   onSave?: () => void
+  onSaveToCiq?: () => void
 }
 
 type CitationPart = { type: 'text'; value: string } | { type: 'citation'; value: number }
@@ -75,10 +77,12 @@ export function ReportViewer({
   error,
   canSave,
   savePending,
+  savingToCiq,
   template,
   date,
   onCopy,
   onSave,
+  onSaveToCiq,
 }: ReportViewerProps) {
   const [selectedCitation, setSelectedCitation] = useState<number | null>(null)
   const showToast = useToast((s) => s.show)
@@ -125,6 +129,12 @@ export function ReportViewer({
               {savePending ? 'Saving note' : 'Save as ledger note'}
             </Button>
             <WebexPostButton markdown={report.markdown} />
+            {template === 'perf_checkin' && (
+              <Button variant="secondary" onClick={onSaveToCiq} disabled={savingToCiq}>
+                <UploadCloud size={14} />
+                {savingToCiq ? 'Saving to ciq' : 'Save to ciq CHANGELOG'}
+              </Button>
+            )}
             {template === 'wrap' && (
               <Button
                 variant="secondary"

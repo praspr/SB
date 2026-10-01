@@ -45,4 +45,18 @@ describe('ReportViewer', () => {
     expect(html).toContain('Pick a template and hit Run.')
     expect(html).not.toContain('Post to Webex')
   })
+
+  it('shows the Save to ciq CHANGELOG button only for the perf_checkin template', () => {
+    const perfHtml = renderViewer({ template: 'perf_checkin' })
+    expect(perfHtml).toContain('Save to ciq CHANGELOG')
+    expect(perfHtml).not.toContain('Email draft')
+
+    const dailyHtml = renderViewer({ template: 'daily' })
+    expect(dailyHtml).not.toContain('Save to ciq CHANGELOG')
+  })
+
+  it('shows "Saving to ciq" while the save-to-ciq mutation is pending', () => {
+    const html = renderViewer({ template: 'perf_checkin', savingToCiq: true })
+    expect(html).toContain('Saving to ciq')
+  })
 })

@@ -28,4 +28,23 @@ describe('report wrappers', () => {
       until: '2026-10-01T00:00:00Z',
     })
   })
+
+  it('calls report_perf_checkin with shape and voice', async () => {
+    const { callTool } = await import('./mcp')
+    vi.mocked(callTool).mockResolvedValue({ markdown: '# Perf check-in', citations: [] })
+    const { reportPerfCheckin } = await import('./reports')
+    await reportPerfCheckin({ shape: 'one-improvement', voice: 'third-person' })
+    expect(callTool).toHaveBeenCalledWith('report_perf_checkin', {
+      shape: 'one-improvement',
+      voice: 'third-person',
+    })
+  })
+
+  it('calls report_perf_checkin with no args by default', async () => {
+    const { callTool } = await import('./mcp')
+    vi.mocked(callTool).mockResolvedValue({ markdown: '# Perf check-in', citations: [] })
+    const { reportPerfCheckin } = await import('./reports')
+    await reportPerfCheckin()
+    expect(callTool).toHaveBeenCalledWith('report_perf_checkin', {})
+  })
 })
