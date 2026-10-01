@@ -32,7 +32,6 @@ vi.mock('@/lib/store', () => ({
     setSettingsTab: () => undefined,
   }),
 }))
-vi.mock('@/components/landing/MorningBrief', () => ({ MorningBrief: () => <div>Morning summary</div> }))
 vi.mock('@/components/landing/UsageStats', () => ({ UsageStats: () => <div>Usage metrics</div> }))
 vi.mock('@/components/landing/DashboardInsights', () => ({ DashboardInsights: () => <div>Status analytics</div> }))
 vi.mock('@/components/landing/ChatPanel', () => ({ ChatPanel: () => <div>Assistant panel</div> }))
@@ -60,6 +59,7 @@ describe('landing page', () => {
     expect(html).toContain('Upcoming meetings')
     expect(html).toContain('Plan your day')
     expect(html).toContain('Get started')
+    expect(html).toContain('View today&#x27;s brief →')
     expect(html).not.toContain('AI usage')
     expect(html).not.toContain('Usage metrics')
     expect(html).not.toContain('Status analytics')

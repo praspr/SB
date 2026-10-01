@@ -125,6 +125,9 @@ export function LandingPage() {
               {tasks?.length ?? 0} priorities · {meetings?.length ?? 0} meetings · {attentionCount} need attention
             </p>
           </div>
+          <Link to="/reports?template=daily" className="text-13 text-text-secondary hover:text-text-primary">
+            View today&apos;s brief →
+          </Link>
         </section>
       )}
 
