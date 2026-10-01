@@ -9,6 +9,7 @@ import { ledgerProjects, ledgerRegisterProject, ledgerSessions } from '@/lib/led
 import { addScheduledRitual, deleteScheduledRitual, listScheduledRituals } from '@/lib/schedules'
 import { SETTING_CHECKS, type CheckResult } from '@/lib/settings-checks'
 import { fetchCoreStatus } from '@/lib/status'
+import { permissionStatus, requestPermission } from '@/lib/notifications'
 import { useUiStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { SchedulesTab, RITUAL_OPTIONS } from '@/components/layout/SchedulesTab'
@@ -33,6 +34,7 @@ export function SettingsPopover({ children, defaultMoreOpen = false }: SettingsP
   const [scheduleCron, setScheduleCron] = useState('')
   const [scheduleEnabled, setScheduleEnabled] = useState(true)
   const [moreOpen, setMoreOpen] = useState(defaultMoreOpen)
+  const [notifyPermission, setNotifyPermission] = useState<'default' | 'granted' | 'denied' | 'unavailable'>(() => permissionStatus())
 
   const checks = useQueries({
     queries: SETTING_CHECKS.map((check) => ({
@@ -180,6 +182,33 @@ export function SettingsPopover({ children, defaultMoreOpen = false }: SettingsP
 
             <TabsContent value="diagnostics" className="space-y-2.5">
               <div className="text-12 uppercase tracking-[0.18em] text-text-muted">Diagnostics</div>
+              <div className="rounded-lg border border-border-subtle bg-black/20 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-13 text-text-primary">Reminders</div>
+                    <div className="mt-1 text-12 text-text-muted">
+                      {notifyPermission === 'granted'
+                        ? 'Enabled'
+                        : notifyPermission === 'denied'
+                          ? 'Disabled in browser settings'
+                          : notifyPermission === 'default'
+                            ? 'Not enabled yet'
+                            : 'Unavailable in this browser'}
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="px-2.5 py-1 text-12"
+                    onClick={() => {
+                      void requestPermission().then((permission) => setNotifyPermission(permission))
+                    }}
+                    disabled={notifyPermission === 'unavailable'}
+                  >
+                    {notifyPermission === 'granted' ? 'Enabled' : 'Enable'}
+                  </Button>
+                </div>
+              </div>
               <dl className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <dt className="text-12 uppercase tracking-[0.18em] text-text-muted">Database</dt>

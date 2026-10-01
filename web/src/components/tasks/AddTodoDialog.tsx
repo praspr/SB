@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { listJiraTickets, TASKS_QUERY_KEY, useUpdateTask } from '@/lib/queries'
 import { listGoalsV2 } from '@/lib/goals'
+import { NOTIFY_PROMPT_DISMISSED_KEY, permissionStatus, requestPermission } from '@/lib/notifications'
 import { createRichTask } from '@/lib/todos-rich'
 import { useUiStore } from '@/lib/store'
 import type { Priority, Task } from '@/lib/mock-data'
@@ -25,6 +26,8 @@ export function AddTodoDialog() {
   const [dueDate, setDueDate] = useState('')
   const [dueTime, setDueTime] = useState('')
   const [remindBeforeMinutes, setRemindBeforeMinutes] = useState('0')
+  const [notifyPermission, setNotifyPermission] = useState<'default' | 'granted' | 'denied' | 'unavailable'>('unavailable')
+  const [notifyPromptDismissed, setNotifyPromptDismissed] = useState(false)
   const [recurrencePreset, setRecurrencePreset] = useState('')
   const [customRrule, setCustomRrule] = useState('')
   const goals = useQuery({ queryKey: ['goals-v2', 'dialog'], queryFn: async () => listGoalsV2(), staleTime: 30_000, enabled: open })
@@ -42,6 +45,10 @@ export function AddTodoDialog() {
     setDueDate(source?.due_date ?? '')
     setDueTime(source?.due_time ?? '')
     setRemindBeforeMinutes(String(source?.remind_before_minutes ?? 0))
+    setNotifyPermission(permissionStatus())
+    setNotifyPromptDismissed(
+      typeof window !== 'undefined' && window.localStorage.getItem(NOTIFY_PROMPT_DISMISSED_KEY) === '1',
+    )
     const recurrence = editing?.recurrence_rule ?? draft?.recurrence_rule ?? ''
     if (recurrence === 'FREQ=DAILY' || recurrence === 'FREQ=WEEKLY' || recurrence === 'FREQ=MONTHLY') {
       setRecurrencePreset(recurrence)
@@ -107,6 +114,8 @@ export function AddTodoDialog() {
     setCustomRrule('')
     setOpen(false)
   }
+
+  const showNotifyPrompt = Boolean(dueDate && dueTime && notifyPermission === 'default' && !notifyPromptDismissed)
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -233,6 +242,37 @@ export function AddTodoDialog() {
                   className="h-9 w-full rounded-md border border-border-subtle bg-bg-panel px-3 text-13 text-text-primary outline-none focus:border-accent-500"
                 />
               </label>
+            ) : null}
+            {showNotifyPrompt ? (
+              <div className="mt-3 rounded-lg border border-accent-500/30 bg-accent-500/10 p-3">
+                <div className="text-13 font-medium text-text-primary">Enable popup reminders</div>
+                <div className="mt-1 text-12 text-text-secondary">
+                  sb can show an OS-level popup when this todo is due. You will still get an in-app reminder toast either way.
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      void requestPermission().then((permission) => setNotifyPermission(permission))
+                    }}
+                  >
+                    Enable
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => {
+                      if (typeof window !== 'undefined') {
+                        window.localStorage.setItem(NOTIFY_PROMPT_DISMISSED_KEY, '1')
+                      }
+                      setNotifyPromptDismissed(true)
+                    }}
+                  >
+                    Dismiss
+                  </Button>
+                </div>
+              </div>
             ) : null}
           </div>
           <div className="grid grid-cols-2 gap-3">

@@ -8,6 +8,7 @@ import { AddTodoDialog } from '@/components/tasks/AddTodoDialog'
 const invalidateQueries = vi.fn()
 const mutateAsync = vi.fn()
 const createRichTask = vi.fn()
+const requestPermission = vi.fn()
 
 const uiState = {
   addTodoOpen: true,
@@ -42,6 +43,11 @@ vi.mock('@/lib/queries', () => ({
 
 vi.mock('@/lib/goals', () => ({ listGoalsV2: () => Promise.resolve([]) }))
 vi.mock('@/lib/todos-rich', () => ({ createRichTask }))
+vi.mock('@/lib/notifications', () => ({
+  NOTIFY_PROMPT_DISMISSED_KEY: 'sb-notify-prompt-dismissed',
+  permissionStatus: () => 'default',
+  requestPermission,
+}))
 vi.mock('@/lib/store', () => ({
   useUiStore: (selector: (state: typeof uiState) => unknown) => selector(uiState),
 }))
@@ -71,8 +77,11 @@ describe('AddTodoDialog due picker', () => {
     invalidateQueries.mockReset()
     mutateAsync.mockReset()
     createRichTask.mockReset()
+    requestPermission.mockReset()
     createRichTask.mockResolvedValue({ id: 1, title: 'Ship it' })
     mutateAsync.mockResolvedValue({ id: 1, title: 'Ship it' })
+    requestPermission.mockResolvedValue('granted')
+    window.localStorage.clear()
   })
 
   afterEach(() => {
@@ -93,6 +102,7 @@ describe('AddTodoDialog due picker', () => {
 
     change(container.querySelector('input[aria-label="Due time"]'), '15:30')
     expect((container.querySelector('input[aria-label="Remind me minutes before"]') as HTMLInputElement | null)?.value).toBe('0')
+    expect(container.textContent).toContain('Enable popup reminders')
 
     act(() => {
       ;(Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Clear') as HTMLButtonElement).click()
@@ -101,6 +111,22 @@ describe('AddTodoDialog due picker', () => {
     expect((container.querySelector('input[aria-label="Due date"]') as HTMLInputElement).value).toBe('')
     expect(container.querySelector('input[aria-label="Due time"]')).toBeNull()
     expect(container.querySelector('input[aria-label="Remind me minutes before"]')).toBeNull()
+  })
+
+  it('dismisses the notification prompt once', () => {
+    act(() => {
+      root.render(<AddTodoDialog />)
+    })
+
+    change(container.querySelector('input[aria-label="Due date"]'), '2026-10-05')
+    change(container.querySelector('input[aria-label="Due time"]'), '15:30')
+
+    act(() => {
+      ;(Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Dismiss') as HTMLButtonElement).click()
+    })
+
+    expect(window.localStorage.getItem('sb-notify-prompt-dismissed')).toBe('1')
+    expect(container.textContent).not.toContain('Enable popup reminders')
   })
 
   it('prefills edit values and submits due fields', async () => {

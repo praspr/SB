@@ -36,6 +36,11 @@ vi.mock('@/lib/status', () => ({
   fetchCoreStatus: () => Promise.resolve({ version: '1.0.0', database: { ready: true, schema_version: 1 }, counts: { tools: 1, prompts: 2, resources: 3 } }),
 }))
 
+vi.mock('@/lib/notifications', () => ({
+  permissionStatus: () => 'default',
+  requestPermission: () => Promise.resolve('granted'),
+}))
+
 vi.mock('@/lib/store', () => ({
   useUiStore: (selector: (state: any) => unknown) => selector({
     settingsOpen: true,
@@ -75,5 +80,7 @@ describe('settings popover', () => {
 
     expect(html).toContain('Sessions</button>')
     expect(html).toContain('Diagnostics</button>')
+    expect(html).toContain('Reminders')
+    expect(html).toContain('Not enabled yet')
   })
 })
