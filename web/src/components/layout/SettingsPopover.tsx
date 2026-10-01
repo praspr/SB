@@ -21,8 +21,9 @@ export function SettingsPopover({ children }: SettingsPopoverProps) {
   const queryClient = useQueryClient()
   const open = useUiStore((s) => s.settingsOpen)
   const setOpen = useUiStore((s) => s.setSettingsOpen)
+  const tab = useUiStore((s) => s.settingsTab)
+  const setTab = useUiStore((s) => s.setSettingsTab)
   const [refreshedAt, setRefreshedAt] = useState<Date | null>(null)
-  const [tab, setTab] = useState('connections')
   const [projectName, setProjectName] = useState('')
   const [rootPath, setRootPath] = useState('')
   const [changelogPath, setChangelogPath] = useState('')
@@ -128,7 +129,7 @@ export function SettingsPopover({ children }: SettingsPopoverProps) {
             </button>
           </div>
 
-          <Tabs value={tab} onValueChange={setTab}>
+          <Tabs value={tab} onValueChange={(value) => setTab(value as 'connections' | 'schedules' | 'projects' | 'sessions' | 'diagnostics')}>
             <TabsList className="grid grid-cols-5 gap-1">
               <TabsTrigger value="connections">Connections</TabsTrigger>
               <TabsTrigger value="diagnostics">Diagnostics</TabsTrigger>

@@ -1,13 +1,18 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQueries, useQuery } from '@tanstack/react-query'
 import { AlertCircle, ArrowRight, CalendarDays, CheckCircle2, Sparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { useTodayTasks, useTodayMeetings, useJiraTickets } from '@/lib/queries'
+import { useJiraStatus, useTodayTasks, useTodayMeetings, useJiraTickets, useWebexStatus } from '@/lib/queries'
 import { webexAttentionFiltered } from '@/lib/triage'
+import { ledgerProjects, ledgerSearch } from '@/lib/ledger'
+import { listGoalsV2 } from '@/lib/goals'
+import { useUiStore } from '@/lib/store'
 import { TaskList } from '@/components/tasks/TaskList'
 import { MeetingList } from '@/components/meetings/MeetingList'
 import { ChatPanel } from '@/components/landing/ChatPanel'
 
 export function LandingPage() {
+  const setSettingsOpen = useUiStore((s) => s.setSettingsOpen)
+  const setSettingsTab = useUiStore((s) => s.setSettingsTab)
   const { data: tasks, isLoading: tasksLoading } = useTodayTasks()
   const { data: meetings, isLoading: meetingsLoading } = useTodayMeetings()
   const attention = useQuery({
@@ -16,6 +21,30 @@ export function LandingPage() {
     staleTime: 30_000,
   })
   const tickets = useJiraTickets()
+  const webexStatus = useWebexStatus()
+  const jiraStatus = useJiraStatus()
+  const [ledgerPreview, projects, goals] = useQueries({
+    queries: [
+      {
+        queryKey: ['landing', 'ledger-preview'],
+        queryFn: () => ledgerSearch({ limit: 1 }),
+        staleTime: 30_000,
+        retry: 1,
+      },
+      {
+        queryKey: ['landing', 'projects'],
+        queryFn: ledgerProjects,
+        staleTime: 30_000,
+        retry: 1,
+      },
+      {
+        queryKey: ['landing', 'goals'],
+        queryFn: () => listGoalsV2({ status: 'active' }),
+        staleTime: 30_000,
+        retry: 1,
+      },
+    ],
+  })
   const blockedTickets = (tickets.data ?? []).filter((ticket) => ticket.status === 'Blocked')
   const attentionHighlights = [
     ...(attention.data ?? []).map((item) => ({
@@ -34,6 +63,19 @@ export function LandingPage() {
   const attentionCount = attentionHighlights.length
   const topAttention = attentionHighlights.slice(0, 2)
   const overflowAttention = attentionCount - topAttention.length
+  const ledgerCount = ledgerPreview.data?.length ?? 0
+  const isFirstRunEmpty = (tasks?.length ?? 0) + (tickets.data?.length ?? 0) + attentionCount + ledgerCount === 0
+  const checklist: Array<
+    | { label: string; done: boolean; href: string }
+    | { label: string; done: boolean; action: () => void }
+  > = [
+    { label: 'Sign in to Webex', done: Boolean(webexStatus.data?.authenticated), href: '/webex/login' },
+    { label: 'Add JIRA token', done: Boolean(jiraStatus.data?.atlassian_reachable), action: () => { setSettingsTab('connections'); setSettingsOpen(true) } },
+    { label: 'Log first ledger', done: ledgerCount > 0, href: '/reports?template=daily' },
+    { label: 'Enroll a project', done: (projects.data?.length ?? 0) > 0, action: () => { setSettingsTab('projects'); setSettingsOpen(true) } },
+    { label: 'Set up a goal', done: (goals.data?.length ?? 0) > 0, href: '/goals?new' },
+  ]
+  const allChecklistDone = checklist.every((item) => item.done)
 
   return (
     <div className="space-y-6">
@@ -85,6 +127,39 @@ export function LandingPage() {
           </div>
         </section>
       )}
+
+      {isFirstRunEmpty && !allChecklistDone ? (
+        <section className="rounded-2xl border border-border-subtle bg-bg-panel/80 p-5">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-500/10 text-accent-300">
+              <Sparkles size={18} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-16 font-semibold text-text-primary">Get started</h2>
+              <p className="mt-1 text-13 text-text-secondary">A few quick setup steps will turn this into a real working dashboard.</p>
+              <div className="mt-4 space-y-2">
+                {checklist.map((item) => (
+                  <div key={item.label} className="flex items-center justify-between gap-3 rounded-xl border border-border-subtle bg-black/20 px-3 py-2.5">
+                    <div className="flex items-center gap-2 text-13 text-text-primary">
+                      <span className={item.done ? 'text-success' : 'text-text-muted'}>{item.done ? '[x]' : '[ ]'}</span>
+                      <span>{item.label}</span>
+                    </div>
+                    {'href' in item ? (
+                      <Link to={item.href} className="text-12 text-text-secondary hover:text-text-primary">
+                        Open
+                      </Link>
+                    ) : (
+                      <button type="button" onClick={item.action} className="text-12 text-text-secondary hover:text-text-primary">
+                        Open
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <div className="grid items-start gap-6 lg:grid-cols-2">
         <section>

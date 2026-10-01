@@ -15,6 +15,8 @@ type UiState = {
   setSidebarCollapsed: (collapsed: boolean) => void
   settingsOpen: boolean
   setSettingsOpen: (open: boolean) => void
+  settingsTab: 'connections' | 'schedules' | 'projects' | 'sessions' | 'diagnostics'
+  setSettingsTab: (tab: UiState['settingsTab']) => void
   commandPaletteOpen: boolean
   setCommandPaletteOpen: (open: boolean) => void
   addTodoOpen: boolean
@@ -31,6 +33,8 @@ export const useUiStore = create<UiState>((set) => ({
   setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
   settingsOpen: false,
   setSettingsOpen: (open) => set({ settingsOpen: open }),
+  settingsTab: 'connections',
+  setSettingsTab: (tab) => set({ settingsTab: tab }),
   commandPaletteOpen: false,
   setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
   addTodoOpen: false,
