@@ -22,7 +22,7 @@ vi.mock('@/lib/webex-mute', () => ({
 }))
 
 describe('webex page', () => {
-  it('shows sign-in and a load error without inventing messages', () => {
+  it('shows the full-page sign-in empty state when Webex is not authenticated', () => {
     const client = new QueryClient()
     const html = renderToStaticMarkup(
       <QueryClientProvider client={client}>
@@ -31,8 +31,9 @@ describe('webex page', () => {
         </MemoryRouter>
       </QueryClientProvider>,
     )
+    expect(html).toContain('Not signed in to Webex')
     expect(html).toContain('Sign in to Webex')
-    expect(html).toContain('offline')
-    expect(html).toContain('Open inbox')
+    expect(html).toContain('mirror your meetings, spaces, and message previews')
+    expect(html).not.toContain('Open inbox')
   })
 })

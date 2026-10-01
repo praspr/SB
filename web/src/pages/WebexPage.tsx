@@ -65,6 +65,39 @@ export function WebexPage() {
     }
   }
 
+  if (status.isLoading && !status.data) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-2">
+            <div className="h-7 w-32 animate-pulse rounded-md bg-bg-panel" />
+            <div className="h-5 w-56 animate-pulse rounded-md bg-bg-panel" />
+          </div>
+          <div className="h-10 w-24 animate-pulse rounded-md border border-border-subtle bg-bg-panel" />
+        </div>
+        <SkeletonRow lines={6} />
+      </div>
+    )
+  }
+
+  if (status.data?.authenticated === false) {
+    return (
+      <div className="flex min-h-[68vh] items-center justify-center">
+        <div className="w-full max-w-2xl rounded-[28px] border border-border-strong bg-bg-panel/92 p-6 shadow-md sm:p-8">
+          <EmptyState
+            title="Not signed in to Webex"
+            body="Sign in once to let sb mirror your meetings, spaces, and message previews into this workspace."
+            icon={<MessageSquare size={28} />}
+            actionLabel="Sign in to Webex"
+            onAction={() => {
+              window.location.href = 'http://127.0.0.1:8787/webex/login'
+            }}
+          />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">

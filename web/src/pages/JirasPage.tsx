@@ -1,14 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
-import { RefreshCw, Loader2 } from 'lucide-react'
+import { RefreshCw, Loader2, Ticket } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { useJiraTickets, useSyncJira, useJiraStatus, useTrackJira, useUntrackJira } from '@/lib/queries'
 import { TrackJiraForm } from '@/components/jira/TrackJiraForm'
 import { JiraFilterBar, JIRA_PROJECTS, type JiraPriorityFilter, type JiraStatusFilter } from '@/components/jira/JiraFilterBar'
 import { JiraTicketList } from '@/components/jira/JiraTicketList'
+import { EmptyState } from '@/components/shared/EmptyState'
+import { SkeletonRow } from '@/components/shared/SkeletonRow'
 import { Button } from '@/components/ui/button'
 import { paginateJira, summarizeJira } from '@/lib/jira-page'
+import { useUiStore } from '@/lib/store'
 
 export function JirasPage() {
+  const setSettingsOpen = useUiStore((s) => s.setSettingsOpen)
+  const setSettingsTab = useUiStore((s) => s.setSettingsTab)
   const [searchParams] = useSearchParams()
   const [status, setStatus] = useState<JiraStatusFilter>(
     (searchParams.get('status') as JiraStatusFilter | null) ?? 'active',
@@ -33,7 +38,7 @@ export function JirasPage() {
     [status, priority, projects, q],
   )
   const { data: tickets, isLoading, isError, error } = useJiraTickets(filters)
-  const { data: svcStatus } = useJiraStatus()
+  const { data: svcStatus, isLoading: statusLoading } = useJiraStatus()
   const syncMutation = useSyncJira()
   const trackMutation = useTrackJira()
   const untrackMutation = useUntrackJira()
@@ -75,6 +80,50 @@ export function JirasPage() {
       setTrackTone('error')
       setTrackMsg((err as Error).message)
     }
+  }
+
+  const confirmedDisconnectedEmpty = !isLoading
+    && !statusLoading
+    && !isError
+    && (tickets?.length ?? 0) === 0
+    && svcStatus?.atlassian_reachable === false
+
+  if (isLoading && !tickets) {
+    return (
+      <div className="space-y-5">
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <Button variant="secondary" disabled>
+            <Loader2 size={14} className="animate-spin" />
+            Refresh from Atlassian
+          </Button>
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="h-20 animate-pulse rounded-xl border border-border-subtle bg-bg-panel/60" />
+          ))}
+        </div>
+        <SkeletonRow lines={6} />
+      </div>
+    )
+  }
+
+  if (confirmedDisconnectedEmpty) {
+    return (
+      <div className="flex min-h-[68vh] items-center justify-center">
+        <div className="w-full max-w-2xl rounded-[28px] border border-border-strong bg-bg-panel/92 p-6 shadow-md sm:p-8">
+          <EmptyState
+            title="Not connected to Atlassian"
+            body="Add a JIRA token in Settings → Connections so sb can mirror your assigned issues from Atlassian into this view."
+            actionLabel="Add JIRA token"
+            onAction={() => {
+              setSettingsTab('connections')
+              setSettingsOpen(true)
+            }}
+            icon={<Ticket size={28} />}
+          />
+        </div>
+      </div>
+    )
   }
 
   return (
