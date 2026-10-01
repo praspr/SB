@@ -144,7 +144,7 @@ export function TodosPage() {
           <div key={item.label} className="flex items-center gap-3 border-b border-border-subtle px-4 py-3 last:border-0 sm:border-b-0 sm:border-r">
             <item.icon size={15} className={item.tone} />
             <div>
-              <div className="text-18 font-semibold tabular text-text-primary">{item.value}</div>
+              <div className="text-16 font-semibold tabular text-text-primary">{item.value}</div>
               <div className="text-11 uppercase tracking-[0.12em] text-text-muted">{item.label}</div>
             </div>
           </div>

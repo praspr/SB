@@ -149,7 +149,7 @@ export function JirasPage() {
           { label: 'Blocked', value: stats.blocked, tone: 'text-danger' },
         ].map((item) => (
           <div key={item.label} className="border-b border-border-subtle px-4 py-3 last:border-0 sm:border-b-0 sm:border-r sm:last:border-r-0">
-            <div className={`text-18 font-semibold tabular ${item.tone}`}>{item.value}</div>
+            <div className={`text-16 font-semibold tabular ${item.tone}`}>{item.value}</div>
             <div className="text-11 uppercase tracking-[0.12em] text-text-muted">{item.label}</div>
           </div>
         ))}

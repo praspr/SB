@@ -49,13 +49,22 @@ module.exports = {
         },
       },
       fontFamily: {
+        // text-24 font-semibold tracking-tight — page h1
+        // text-20 font-semibold — section h1 (dense)
+        // text-16 font-semibold — section h2
+        // text-14 font-semibold — subsection h3
+        // text-13 — body
+        // text-12 uppercase tracking-[0.18em] — small caps labels
+        // text-12 text-text-muted — secondary body
+        // text-11 uppercase tracking-[0.18em] text-text-muted — sidebar group heading
         sans: [
-          'Inter Variable',
           'Inter',
-          'SF Pro Display',
-          'SF Pro Text',
+          'system-ui',
           '-apple-system',
           'BlinkMacSystemFont',
+          'Segoe UI',
+          'Helvetica Neue',
+          'Arial',
           'sans-serif',
         ],
       },
@@ -66,7 +75,6 @@ module.exports = {
         16: ['16px', { lineHeight: '24px', fontWeight: '600' }],
         20: ['20px', { lineHeight: '28px', fontWeight: '600' }],
         24: ['24px', { lineHeight: '32px', fontWeight: '650' }],
-        32: ['32px', { lineHeight: '38px', fontWeight: '700' }],
       },
       spacing: {
         1: '4px',

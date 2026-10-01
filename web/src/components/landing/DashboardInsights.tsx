@@ -57,7 +57,7 @@ function MiniChart({
           <h3 className="text-14 font-semibold text-text-primary">{title}</h3>
           <p className="mt-0.5 text-11 text-text-muted">{subtitle}</p>
         </div>
-        <span className="text-18 font-semibold tabular-nums text-text-primary">{total}</span>
+        <span className="text-20 font-semibold tabular-nums text-text-primary">{total}</span>
       </div>
       <div className="mt-4 flex h-2 overflow-hidden rounded-full bg-neutral-800">
         {data.map((item, index) =>
@@ -131,4 +131,3 @@ export function DashboardInsights({
     </section>
   )
 }
-

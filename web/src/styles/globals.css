@@ -17,6 +17,7 @@ body,
 }
 
 body {
+  @apply font-sans text-13 leading-6 text-text-primary;
   background:
     radial-gradient(circle at top left, rgba(94, 106, 210, 0.14), transparent 28%),
     radial-gradient(circle at 85% 10%, rgba(93, 168, 255, 0.08), transparent 20%),

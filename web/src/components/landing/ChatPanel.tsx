@@ -37,7 +37,7 @@ export function ChatPanelView({
       <div className="border-b border-border-subtle p-4">
         <div className="flex items-center gap-2">
           <Sparkles size={16} className="text-accent-300" />
-          <h2 className="text-15 font-semibold text-text-primary">Ask your second brain</h2>
+          <h2 className="text-16 font-semibold text-text-primary">Ask your second brain</h2>
         </div>
         <p className="mt-1 text-11 text-text-muted">Read-only · grounded in local todos, JIRA, and signals</p>
       </div>
@@ -169,4 +169,3 @@ export function ChatPanel() {
     />
   )
 }
-
