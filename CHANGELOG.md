@@ -30,6 +30,12 @@
 - Add a deterministic standup of 5–8 bullets drawn from today's plan, the previous day's wrap, and high-priority todos, plus a Standup page that can copy them.
 - Document the single `sb-core` process in the README architecture. The old two-server launch instructions are replaced by the prepared, not-yet-applied cutover.
 
+
+## [2026-10-01]
+- **15:11:27 UTC** · **Removed** Removed todo "Phase 2g smoke test task" `9`
+- **15:11:17 UTC** · **Completed** Completed todo "Phase 2g smoke test task" `9`
+- **15:11:13 UTC** · **Added** Added todo "Phase 2g smoke test task" `9`
+
 ## [2026-09-30]
 - **19:17:50 UTC** · **Reviewed** it looks like the certificate used above is signed by an internal signer and there are some other hostnames that need to be used. I'll make a new PR to use them per-env. `Common AI - Agent Team`
 
