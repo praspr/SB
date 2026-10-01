@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion'
-import { Check, Pencil } from 'lucide-react'
+import { Check, Clock, Pencil } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { Task, Priority } from '@/lib/mock-data'
+import { formatDueBadge } from '@/lib/due-format'
 import { useToast } from '@/lib/useToast'
 import { useUiStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
@@ -32,6 +33,7 @@ export function TaskRow({ task, goalTitle }: { task: Task; goalTitle?: string })
   const uncompleteTask = useUncompleteTask()
   const openAddTodo = useUiStore((state) => state.openAddTodo)
   const showToast = useToast((state) => state.show)
+  const dueBadge = formatDueBadge(task)
 
   return (
     <motion.div
@@ -76,10 +78,11 @@ export function TaskRow({ task, goalTitle }: { task: Task; goalTitle?: string })
           <div className="min-w-0 flex-1">
             <div
               className={cn(
-                'truncate text-14 font-medium text-text-primary',
+                'flex items-center gap-2 truncate text-14 font-medium text-text-primary',
                 task.is_completed && 'line-through text-text-muted'
               )}
             >
+              {dueBadge?.overdue ? <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-danger" aria-hidden="true" /> : null}
               {task.title}
             </div>
             <div className="mt-0.5 flex items-center gap-2 text-12 text-text-muted">
@@ -116,12 +119,19 @@ export function TaskRow({ task, goalTitle }: { task: Task; goalTitle?: string })
                   </span>
                 </>
               )}
-              {task.due_date && (
+              {dueBadge && (
                 <>
                   <span>·</span>
-                  <span className="tabular">
-                    due {task.due_date}
-                    {task.due_time ? ` ${task.due_time}` : ''}
+                  <span
+                    className={cn(
+                      'inline-flex items-center gap-1 rounded-full border border-border-subtle bg-black/20 px-2 py-0.5 font-medium tabular',
+                      dueBadge.tone === 'danger' && 'font-semibold text-danger',
+                      dueBadge.tone === 'warning' && 'text-warning',
+                      dueBadge.tone === 'muted' && 'text-text-muted',
+                    )}
+                  >
+                    <Clock size={12} />
+                    {dueBadge.text}
                   </span>
                 </>
               )}
