@@ -19,6 +19,22 @@ describe('todo draft store', () => {
     expect(useUiStore.getState().todoDraft).toEqual(draft)
   })
 
+  it('keeps an edit task in the draft when opening edit mode', () => {
+    const edit = {
+      id: 42,
+      title: 'Patch the queue',
+      priority: 2 as const,
+      is_completed: false,
+      domain: 'work' as const,
+      source: 'manual' as const,
+      goal_id: 7,
+      jira_ref: 'CXP-42',
+      recurrence_rule: 'FREQ=WEEKLY',
+    }
+    useUiStore.getState().openAddTodo({ edit })
+    expect(useUiStore.getState().todoDraft?.edit).toEqual(edit)
+  })
+
   it('opens settings from the shared UI store', () => {
     useUiStore.getState().setSettingsOpen(true)
     useUiStore.getState().setSettingsTab('projects')

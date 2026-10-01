@@ -56,6 +56,7 @@ export function TodosPage() {
   const [dryRun, setDryRun] = useState(true)
   const quickAddRef = useRef<QuickAddInputHandle>(null)
   const focusQuickAddSignal = useUiStore((s) => s.focusQuickAddSignal)
+  const openAddTodo = useUiStore((s) => s.openAddTodo)
   const showToast = useToast((s) => s.show)
   const importJira = useMutation({
     mutationFn: () => bulkImportJiraToTodos({ statuses: importStatuses, dry_run: dryRun }),
@@ -129,6 +130,9 @@ export function TodosPage() {
         <div className="min-w-[280px] flex-1">
           <QuickAddInput ref={quickAddRef} />
         </div>
+        <Button variant="primary" onClick={() => openAddTodo()}>
+          New todo
+        </Button>
         <Button variant="secondary" onClick={() => setImportOpen(true)}>
           Create todos from JIRA{jiraTickets.data ? ` (${jiraTickets.data.length})` : ''}
         </Button>

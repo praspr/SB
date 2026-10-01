@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion'
-import { Check } from 'lucide-react'
+import { Check, Pencil } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { Task, Priority } from '@/lib/mock-data'
+import { useUiStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { useCompleteTask } from '@/lib/queries'
 
@@ -27,6 +28,7 @@ const domainClasses: Record<Task['domain'], string> = {
 
 export function TaskRow({ task, goalTitle }: { task: Task; goalTitle?: string }) {
   const completeTask = useCompleteTask()
+  const openAddTodo = useUiStore((state) => state.openAddTodo)
 
   return (
     <motion.div
@@ -118,6 +120,15 @@ export function TaskRow({ task, goalTitle }: { task: Task; goalTitle?: string })
               {task.score}
             </span>
           )}
+          <button
+            type="button"
+            onClick={() => openAddTodo({ edit: task })}
+            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-12 text-text-muted opacity-0 transition-all duration-fast ease-out hover:bg-bg-elevated hover:text-text-primary group-hover:opacity-100"
+            aria-label={`Edit ${task.title}`}
+          >
+            <Pencil size={12} />
+            Edit
+          </button>
     </motion.div>
   )
 }

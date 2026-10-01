@@ -72,4 +72,18 @@ describe('todo queries', () => {
     restoreSnapshots(client, previous)
     expect(client.getQueryData<Task[]>(['tasks'])?.[0].is_completed).toBe(false)
   })
+
+  it('updates a todo through todo_update', async () => {
+    const { callTool } = await import('./mcp')
+    vi.mocked(callTool).mockResolvedValue(sample)
+    const { updateTask } = await import('./queries')
+    await updateTask(7, { title: 'Updated title', goal_id: null, jira_ref: null, recurrence_rule: null })
+    expect(callTool).toHaveBeenCalledWith('todo_update', {
+      todo_id: 7,
+      title: 'Updated title',
+      goal_id: null,
+      jira_ref: null,
+      recurrence_rule: null,
+    })
+  })
 })

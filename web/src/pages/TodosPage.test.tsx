@@ -65,6 +65,30 @@ describe('todos ui', () => {
     expect(html).toContain('Linked to JIRA')
     expect(html).toContain('Recurring')
     expect(html).toContain('Sort by')
+    expect(html).toContain('New todo')
     expect(html).toContain('Create todos from JIRA')
+  })
+
+  it('renders an edit action for each task row', () => {
+    const client = new QueryClient()
+    const html = renderToStaticMarkup(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <TaskList
+            tasks={[
+              {
+                id: 1,
+                title: 'Finish rollout',
+                priority: 1,
+                is_completed: false,
+                domain: 'work',
+                source: 'manual',
+              },
+            ]}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    expect(html).toContain('Edit')
   })
 })

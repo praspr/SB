@@ -10,6 +10,8 @@ import {
 } from './mock-data'
 import { callTool } from './mcp'
 
+export const TASKS_QUERY_KEY = ['tasks'] as const
+
 function isToday(iso?: string): boolean {
   if (!iso) return false
   const d = new Date(iso)
@@ -69,6 +71,19 @@ export function markTaskCompleted(tasks: Task[] | undefined, taskId: number): Ta
   return tasks?.map((task) => (task.id === taskId ? { ...task, is_completed: true } : task))
 }
 
+export type TaskUpdateInput = {
+  title?: string
+  description?: string
+  priority?: Task['priority']
+  due_date?: string | null
+  due_time?: string | null
+  domain?: Task['domain']
+  goal_id?: number | null
+  jira_ref?: string | null
+  recurrence_rule?: string | null
+  parent_todo_id?: number | null
+}
+
 export function restoreSnapshots<T>(
   queryClient: QueryClient,
   previous: Array<[readonly unknown[], T | undefined]> | undefined,
@@ -91,8 +106,16 @@ export async function createTask(input: {
   return todoToTask(raw)
 }
 
+export async function updateTask(taskId: number, patch: TaskUpdateInput): Promise<Task> {
+  const payload = Object.fromEntries(
+    Object.entries({ todo_id: taskId, ...patch }).filter(([, value]) => value !== undefined),
+  )
+  const raw = await callTool<SbTodo>('todo_update', payload)
+  return todoToTask(raw)
+}
+
 export function useTasks() {
-  return useQuery({ queryKey: ['tasks'], queryFn: fetchTasks, retry: 1 })
+  return useQuery({ queryKey: TASKS_QUERY_KEY, queryFn: fetchTasks, retry: 1 })
 }
 
 export function useTodayTasks() {
@@ -122,9 +145,9 @@ export function useCompleteTask() {
       return taskId
     },
     onMutate: async (taskId: number) => {
-      await queryClient.cancelQueries({ queryKey: ['tasks'] })
-      const previous = queryClient.getQueriesData<Task[]>({ queryKey: ['tasks'] })
-      queryClient.setQueriesData<Task[]>({ queryKey: ['tasks'] }, (old) =>
+      await queryClient.cancelQueries({ queryKey: TASKS_QUERY_KEY })
+      const previous = queryClient.getQueriesData<Task[]>({ queryKey: TASKS_QUERY_KEY })
+      queryClient.setQueriesData<Task[]>({ queryKey: TASKS_QUERY_KEY }, (old) =>
         markTaskCompleted(old, taskId)
       )
       return { previous }
@@ -133,7 +156,17 @@ export function useCompleteTask() {
       restoreSnapshots(queryClient, context?.previous)
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] })
+      queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY })
+    },
+  })
+}
+
+export function useUpdateTask() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ taskId, patch }: { taskId: number; patch: TaskUpdateInput }) => updateTask(taskId, patch),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY })
     },
   })
 }
@@ -143,7 +176,7 @@ export function useAddTask() {
   return useMutation({
     mutationFn: createTask,
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] })
+      queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY })
     },
   })
 }

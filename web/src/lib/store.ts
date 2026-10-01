@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { Task } from './mock-data'
 
 export type TodoDraft = {
   title?: string
@@ -7,6 +8,9 @@ export type TodoDraft = {
   external_source?: string
   external_ref?: string
   jira_ref?: string
+  goal_id?: number | null
+  recurrence_rule?: string | null
+  edit?: Task
 }
 
 type UiState = {
