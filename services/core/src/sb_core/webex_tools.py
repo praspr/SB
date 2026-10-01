@@ -17,6 +17,7 @@ from sb_webex.client import (
 from sb_webex.normalize import attention, meetings, messages, readable_tools, spaces
 
 from . import llm
+from .sync_logger import record_sync, sync_lock
 from .webex_store import (
     get_identity,
     list_meetings,
@@ -165,18 +166,31 @@ def webex_login_url() -> dict:
 @mcp.tool()
 def sync_webex() -> dict:
     """Pull read-only Webex meetings, spaces, and message previews."""
-    token = access_token()
-    if not token:
-        return {
-            "meetings": 0,
-            "spaces": 0,
-            "messages": 0,
-            "errors": ["Webex is not signed in. Open /webex/login."],
-        }
-    try:
-        return _pull(McpClient(token))
-    except WebexAuthError as exc:
-        return {"meetings": 0, "spaces": 0, "messages": 0, "errors": [str(exc)]}
+    with sync_lock("webex") as acquired:
+        if not acquired:
+            return {
+                "status": "already_running",
+                "meetings": 0,
+                "spaces": 0,
+                "messages": 0,
+            }
+
+        token = access_token()
+        if not token:
+            result = {
+                "meetings": 0,
+                "spaces": 0,
+                "messages": 0,
+                "errors": ["Webex is not signed in. Open /webex/login."],
+            }
+            record_sync("webex", result, result.get("errors"))
+            return result
+        try:
+            result = _pull(McpClient(token))
+        except WebexAuthError as exc:
+            result = {"meetings": 0, "spaces": 0, "messages": 0, "errors": [str(exc)]}
+        record_sync("webex", result, result.get("errors") or None)
+        return result
 
 
 @mcp.tool()

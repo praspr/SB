@@ -105,3 +105,49 @@ def record_sync(
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("sync_logger.record_sync failed for %s: %s", adapter, exc)
+
+
+def record_scheduler_run(outcomes: dict[str, dict], *, now: Optional[datetime] = None) -> None:
+    """Best-effort ledger write for one ``run_due_schedules`` tick.
+
+    Per the hybrid logging policy (decision #1), every tick is logged --
+    including an idle tick where nothing was due -- because the
+    scheduler-alive signal matters on its own. Verb is ``Ran`` (not
+    ``Synced``, since this is a meta-tool over schedules, not a data sync).
+    """
+    try:
+        from .ledger_tools import ledger_log
+
+        moment = now or datetime.now(timezone.utc)
+        minute = moment.strftime("%Y-%m-%dT%H:%MZ")
+
+        fired = [
+            (name, outcome.get("status", "ok"))
+            for name, outcome in outcomes.items()
+            if outcome.get("ran")
+        ]
+        if fired:
+            summary = "Ran due schedules: " + ", ".join(
+                f"{name} {status}" for name, status in fired
+            )
+        else:
+            summary = "Ran due schedules (idle)"
+
+        body_lines = [f"minute: {minute}"]
+        body_lines.extend(
+            f"{name}: {outcome}" for name, outcome in outcomes.items()
+        )
+        body = "\n".join(body_lines)
+
+        ledger_log(
+            summary=summary,
+            project="sb",
+            action_verb="Ran",
+            body=body,
+            refs=[{"kind": "sync", "value": "scheduler_tick"}],
+            agent="sync-adapter",
+            working_dir=os.getcwd(),
+            source_harness="scheduler",
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("sync_logger.record_scheduler_run failed: %s", exc)

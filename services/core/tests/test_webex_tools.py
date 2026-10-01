@@ -470,3 +470,54 @@ def test_webex_rethread_without_sign_in_does_not_write(monkeypatch) -> None:
     result = webex_rethread()
     assert result["updated"] == 0
     assert result["errors"]
+
+
+# ---------------------------------------------------------------------------
+# sync_webex — lock + record_sync wiring (phase 2j)
+# ---------------------------------------------------------------------------
+
+
+def test_sync_webex_records_sync_with_counts(monkeypatch) -> None:
+    import sb_core.webex_tools as wt
+
+    fake = _FakeClient()
+    monkeypatch.setattr(wt, "access_token", lambda: "session")
+    monkeypatch.setattr(wt, "McpClient", lambda token: fake)
+
+    calls = []
+    monkeypatch.setattr(
+        wt, "record_sync", lambda adapter, counts, errors=None: calls.append(
+            (adapter, counts, errors)
+        )
+    )
+
+    result = sync_webex()
+
+    assert len(calls) == 1
+    adapter, counts, errors = calls[0]
+    assert adapter == "webex"
+    assert counts["meetings"] == 1
+    assert counts["messages"] == 1
+    assert errors is None
+    assert result["meetings"] == 1
+
+
+def test_sync_webex_already_running_returns_stub_and_does_not_log(monkeypatch) -> None:
+    import sb_core.webex_tools as wt
+    from contextlib import contextmanager
+
+    @contextmanager
+    def _fake_lock(name):
+        yield False
+
+    monkeypatch.setattr(wt, "sync_lock", _fake_lock)
+
+    calls = []
+    monkeypatch.setattr(wt, "record_sync", lambda *a, **kw: calls.append((a, kw)))
+    monkeypatch.setattr(
+        wt, "access_token", lambda: (_ for _ in ()).throw(AssertionError("must not run"))
+    )
+
+    result = sync_webex()
+    assert result == {"status": "already_running", "meetings": 0, "spaces": 0, "messages": 0}
+    assert calls == []

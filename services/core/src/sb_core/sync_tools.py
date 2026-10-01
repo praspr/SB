@@ -24,6 +24,7 @@ from fastmcp import FastMCP
 from .adapters import AdapterResult, get_sync_states, run_adapter_by_name
 from .store import signals as _signal_store
 from .store.db import connect
+from .sync_logger import record_sync, sync_lock
 
 logger = logging.getLogger(__name__)
 
@@ -90,33 +91,44 @@ def sync_adapters(
     Returns:
         ``{"adapters": {<name>: {"signal_count": int, "error": str | None}}}``
     """
-    from .config import settings
+    with sync_lock("adapters") as acquired:
+        if not acquired:
+            return {"status": "already_running", "adapters": {}}
 
-    names = list(adapters) if adapters is not None else list(_ALL_ADAPTERS)
-    db_path = settings.db_path
-    roots = _get_roots()
-    git_authors = _get_git_authors()
-    config = {
-        "roots": [str(r) for r in roots],
-        "since_days": since_days,
-        "git_authors": git_authors or [],
-    }
+        from .config import settings
 
-    results: dict[str, dict] = {}
-    for name in names:
-        if name not in _ALL_ADAPTERS:
-            results[name] = {
-                "signal_count": 0,
-                "error": f"unknown adapter: {name!r}",
-            }
-            continue
-        result = _run_one_adapter(name, db_path, config)
-        results[name] = {
-            "signal_count": result.signal_count,
-            "error": result.error,
+        names = list(adapters) if adapters is not None else list(_ALL_ADAPTERS)
+        db_path = settings.db_path
+        roots = _get_roots()
+        git_authors = _get_git_authors()
+        config = {
+            "roots": [str(r) for r in roots],
+            "since_days": since_days,
+            "git_authors": git_authors or [],
         }
 
-    return {"adapters": results}
+        results: dict[str, dict] = {}
+        errors: list[str] = []
+        for name in names:
+            if name not in _ALL_ADAPTERS:
+                results[name] = {
+                    "signal_count": 0,
+                    "error": f"unknown adapter: {name!r}",
+                }
+                errors.append(f"{name}: unknown adapter")
+                continue
+            result = _run_one_adapter(name, db_path, config)
+            results[name] = {
+                "signal_count": result.signal_count,
+                "error": result.error,
+            }
+            if result.error:
+                errors.append(f"{name}: {result.error}")
+
+        counts = {name: r["signal_count"] for name, r in results.items()}
+        record_sync("adapters", counts, errors or None)
+
+        return {"adapters": results}
 
 
 @mcp.tool()

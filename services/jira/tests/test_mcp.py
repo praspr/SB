@@ -113,6 +113,53 @@ def test_sync_jira_no_token_returns_error():
     assert result["added_count"] == 0
 
 
+# ---------------------------------------------------------------------------
+# sync_jira — soft lock + record_sync bridge wiring (phase 2j)
+# ---------------------------------------------------------------------------
+
+
+def test_sync_jira_calls_record_sync_with_counts(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        mcp_tools,
+        "record_sync",
+        lambda adapter, counts, errors=None: calls.append((adapter, counts, errors)),
+    )
+
+    with patch("sb_jira.atlassian_client.get_token", return_value=None):
+        result = mcp_tools.sync_jira()
+
+    assert len(calls) == 1
+    adapter, counts, errors = calls[0]
+    assert adapter == "jira"
+    assert counts == {"updated_count": 0, "added_count": 0, "unchanged_count": 0}
+    assert errors and "No Atlassian token" in errors[0]
+    assert result["errors"]
+
+
+def test_sync_jira_already_running_returns_stub_and_does_not_sync(monkeypatch):
+    from contextlib import contextmanager
+
+    @contextmanager
+    def _fake_lock(name):
+        yield False
+
+    monkeypatch.setattr(mcp_tools, "sync_lock", _fake_lock)
+
+    calls = []
+    monkeypatch.setattr(mcp_tools, "record_sync", lambda *a, **kw: calls.append(a))
+    monkeypatch.setattr(
+        mcp_tools.sync,
+        "run_sync",
+        lambda *a, **kw: (_ for _ in ()).throw(AssertionError("must not sync")),
+    )
+
+    result = mcp_tools.sync_jira()
+    assert result["status"] == "already_running"
+    assert result["updated_count"] == 0
+    assert calls == []
+
+
 def test_jira_status_shape():
     result = mcp_tools.jira_status()
     assert set(result.keys()) == {

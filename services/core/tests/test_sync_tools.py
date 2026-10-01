@@ -210,3 +210,95 @@ def test_sync_adapters_isolation_one_fails_others_succeed(
     result = st.sync_adapters(adapters=["changelog", "git"])
     assert result["adapters"]["changelog"]["error"] is not None
     assert result["adapters"]["git"]["error"] is None
+
+
+# ---------------------------------------------------------------------------
+# sync_adapters — lock + record_sync wiring (phase 2j)
+# ---------------------------------------------------------------------------
+
+
+def test_sync_adapters_records_sync_with_aggregated_counts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import sb_core.sync_tools as st
+
+    monkeypatch.setattr(st, "_get_conn", lambda: connect(tmp_path / "core.db"))
+    monkeypatch.setattr(
+        st,
+        "_run_one_adapter",
+        lambda name, db_path, config: AdapterResult(
+            adapter=name, signal_count=3, error=None
+        ),
+    )
+
+    calls = []
+    monkeypatch.setattr(
+        st, "record_sync", lambda adapter, counts, errors=None: calls.append(
+            (adapter, counts, errors)
+        )
+    )
+
+    st.sync_adapters(adapters=["changelog", "git"])
+
+    assert len(calls) == 1
+    adapter, counts, errors = calls[0]
+    assert adapter == "adapters"
+    assert counts == {"changelog": 3, "git": 3}
+    assert errors is None
+
+
+def test_sync_adapters_record_sync_includes_errors(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import sb_core.sync_tools as st
+
+    monkeypatch.setattr(st, "_get_conn", lambda: connect(tmp_path / "core.db"))
+
+    def patched_runner(name, db_path, config):
+        if name == "changelog":
+            return AdapterResult(adapter=name, error="synthetic failure")
+        return AdapterResult(adapter=name, signal_count=0, error=None)
+
+    monkeypatch.setattr(st, "_run_one_adapter", patched_runner)
+
+    calls = []
+    monkeypatch.setattr(
+        st, "record_sync", lambda adapter, counts, errors=None: calls.append(
+            (adapter, counts, errors)
+        )
+    )
+
+    st.sync_adapters(adapters=["changelog", "git"])
+
+    assert len(calls) == 1
+    _, _, errors = calls[0]
+    assert errors == ["changelog: synthetic failure"]
+
+
+def test_sync_adapters_already_running_returns_stub_and_does_not_log(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import sb_core.sync_tools as st
+    from contextlib import contextmanager
+
+    monkeypatch.setattr(st, "_get_conn", lambda: connect(tmp_path / "core.db"))
+
+    @contextmanager
+    def _fake_lock(name):
+        yield False
+
+    monkeypatch.setattr(st, "sync_lock", _fake_lock)
+
+    calls = []
+    monkeypatch.setattr(
+        st, "record_sync", lambda *a, **kw: calls.append((a, kw))
+    )
+    monkeypatch.setattr(
+        st,
+        "_run_one_adapter",
+        lambda *a, **kw: (_ for _ in ()).throw(AssertionError("must not run")),
+    )
+
+    result = st.sync_adapters(adapters=["changelog"])
+    assert result == {"status": "already_running", "adapters": {}}
+    assert calls == []

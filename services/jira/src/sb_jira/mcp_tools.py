@@ -8,6 +8,7 @@ from fastmcp import FastMCP
 
 from . import atlassian_client, file_store, format, history, sync, tracking
 from .config import settings
+from .sync_bridge import record_sync, sync_lock
 
 mcp = FastMCP(
     name="sb-jira",
@@ -110,7 +111,26 @@ def sync_jira() -> dict:
     Never writes to Atlassian — this is a one-directional, read-only pull.
     Returns update/added/unchanged counts plus any errors encountered.
     """
-    return sync.run_sync().model_dump(mode="json")
+    with sync_lock("jira") as acquired:
+        if not acquired:
+            return {
+                "status": "already_running",
+                "updated_count": 0,
+                "added_count": 0,
+                "unchanged_count": 0,
+                "errors": [],
+                "duration_ms": 0.0,
+                "history_row_appended": False,
+            }
+
+        result = sync.run_sync().model_dump(mode="json")
+        counts = {
+            k: v
+            for k, v in result.items()
+            if k in ("updated_count", "added_count", "unchanged_count")
+        }
+        record_sync("jira", counts, result.get("errors") or None)
+        return result
 
 
 def _last_sync_at() -> str | None:

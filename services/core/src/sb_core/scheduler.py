@@ -17,6 +17,8 @@ from typing import Callable, Optional
 
 from fastmcp import FastMCP
 
+from .sync_logger import record_scheduler_run, sync_lock
+
 mcp = FastMCP(
     "sb-scheduler",
     instructions=(
@@ -299,64 +301,69 @@ def run_due_schedules() -> dict:
     most recent matching minute is newer than its last run. Updates
     ``last_run_at``/``last_status`` per schedule. Safe to call repeatedly --
     a schedule only runs once per matching minute."""
-    conn = _get_conn()
-    try:
-        rows = conn.execute(
-            "SELECT * FROM sb_scheduled_rituals WHERE enabled = 1"
-        ).fetchall()
-        schedules = [_row_to_schedule(row) for row in rows]
-    finally:
-        conn.close()
+    with sync_lock("scheduler_tick") as acquired:
+        if not acquired:
+            return {"status": "already_running", "outcomes": {}}
 
-    dispatch = _ritual_dispatch()
-    now = _now_local()
-    outcomes: dict[str, dict] = {}
-
-    for schedule in schedules:
-        fire_at = last_scheduled_at(schedule["cron"], now)
-        if fire_at is None:
-            outcomes[schedule["name"]] = {"ran": False, "reason": "cron never matches"}
-            continue
-
-        last_run_at = schedule.get("last_run_at")
-        already_ran = False
-        if last_run_at:
-            try:
-                last_run_dt = datetime.fromisoformat(last_run_at)
-                already_ran = fire_at <= last_run_dt
-            except ValueError:
-                already_ran = False
-
-        if already_ran:
-            outcomes[schedule["name"]] = {"ran": False, "reason": "not due"}
-            continue
-
-        func = dispatch.get(schedule["ritual"])
-        status = "ok"
-        error = None
-        if func is None:
-            status = "error"
-            error = f"unknown ritual: {schedule['ritual']!r}"
-        else:
-            try:
-                func(**schedule["args"])
-            except Exception as exc:  # noqa: BLE001
-                status = "error"
-                error = str(exc)
-
-        run_conn = _get_conn()
+        conn = _get_conn()
         try:
-            run_conn.execute(
-                "UPDATE sb_scheduled_rituals SET last_run_at = ?, last_status = ? WHERE id = ?",
-                (now.isoformat(), status, schedule["id"]),
-            )
-            run_conn.commit()
+            rows = conn.execute(
+                "SELECT * FROM sb_scheduled_rituals WHERE enabled = 1"
+            ).fetchall()
+            schedules = [_row_to_schedule(row) for row in rows]
         finally:
-            run_conn.close()
+            conn.close()
 
-        outcomes[schedule["name"]] = {"ran": True, "status": status, "error": error}
+        dispatch = _ritual_dispatch()
+        now = _now_local()
+        outcomes: dict[str, dict] = {}
 
-    return {"outcomes": outcomes}
+        for schedule in schedules:
+            fire_at = last_scheduled_at(schedule["cron"], now)
+            if fire_at is None:
+                outcomes[schedule["name"]] = {"ran": False, "reason": "cron never matches"}
+                continue
+
+            last_run_at = schedule.get("last_run_at")
+            already_ran = False
+            if last_run_at:
+                try:
+                    last_run_dt = datetime.fromisoformat(last_run_at)
+                    already_ran = fire_at <= last_run_dt
+                except ValueError:
+                    already_ran = False
+
+            if already_ran:
+                outcomes[schedule["name"]] = {"ran": False, "reason": "not due"}
+                continue
+
+            func = dispatch.get(schedule["ritual"])
+            status = "ok"
+            error = None
+            if func is None:
+                status = "error"
+                error = f"unknown ritual: {schedule['ritual']!r}"
+            else:
+                try:
+                    func(**schedule["args"])
+                except Exception as exc:  # noqa: BLE001
+                    status = "error"
+                    error = str(exc)
+
+            run_conn = _get_conn()
+            try:
+                run_conn.execute(
+                    "UPDATE sb_scheduled_rituals SET last_run_at = ?, last_status = ? WHERE id = ?",
+                    (now.isoformat(), status, schedule["id"]),
+                )
+                run_conn.commit()
+            finally:
+                run_conn.close()
+
+            outcomes[schedule["name"]] = {"ran": True, "status": status, "error": error}
+
+        record_scheduler_run(outcomes)
+        return {"outcomes": outcomes}
 
 
 def _row_to_schedule(row: sqlite3.Row) -> dict:

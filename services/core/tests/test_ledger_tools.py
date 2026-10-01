@@ -158,3 +158,64 @@ def test_sync_ledger_from_files_hydrates_registered_projects(tmp_path, monkeypat
     rows = lt.ledger_search(project="demo")
     assert len(rows) == 1
     assert rows[0]["summary"] == "hydrated bullet"
+
+
+# ---------------------------------------------------------------------------
+# sync_ledger_from_files — lock + record_sync wiring (phase 2j)
+# ---------------------------------------------------------------------------
+
+
+def test_sync_ledger_from_files_records_sync_with_per_project_counts(
+    tmp_path, monkeypatch
+) -> None:
+    db_path = tmp_path / "core.db"
+    _patch_conn(monkeypatch, db_path)
+    changelog = tmp_path / "demo" / "CHANGELOG.md"
+    changelog.parent.mkdir(parents=True)
+    changelog.write_text(
+        "# Changelog\n\n## [2026-09-30]\n- **09:00:00 UTC** · **Debugged** hydrated bullet\n",
+        encoding="utf-8",
+    )
+    lt.ledger_register_project(
+        project="demo", root_path=str(tmp_path / "demo"), changelog_path=str(changelog)
+    )
+
+    calls = []
+    monkeypatch.setattr(
+        lt, "record_sync", lambda adapter, counts, errors=None: calls.append(
+            (adapter, counts, errors)
+        )
+    )
+
+    lt.sync_ledger_from_files()
+
+    assert len(calls) == 1
+    adapter, counts, errors = calls[0]
+    assert adapter == "ledger_files"
+    assert counts == {"demo": 1}
+    assert errors is None
+
+
+def test_sync_ledger_from_files_already_running_returns_stub_and_does_not_log(
+    tmp_path, monkeypatch
+) -> None:
+    from contextlib import contextmanager
+
+    _patch_conn(monkeypatch, tmp_path / "core.db")
+
+    @contextmanager
+    def _fake_lock(name):
+        yield False
+
+    monkeypatch.setattr(lt, "sync_lock", _fake_lock)
+    calls = []
+    monkeypatch.setattr(lt, "record_sync", lambda *a, **kw: calls.append(a))
+    monkeypatch.setattr(
+        lt,
+        "sync_from_files",
+        lambda *a, **kw: (_ for _ in ()).throw(AssertionError("must not sync")),
+    )
+
+    result = lt.sync_ledger_from_files()
+    assert result == {"status": "already_running", "projects": {}}
+    assert calls == []

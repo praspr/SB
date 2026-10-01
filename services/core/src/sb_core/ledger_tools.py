@@ -17,6 +17,7 @@ from fastmcp import FastMCP
 from .ledger_session import resolve_session_id
 from .ledger_sync import append_to_changelog, sync_from_files
 from .store import ledger as ledger_store
+from .sync_logger import record_sync, sync_lock
 
 mcp = FastMCP(
     "sb-ledger",
@@ -251,9 +252,19 @@ def ledger_register_project(
 def sync_ledger_from_files() -> dict:
     """Hydrate the ledger from bullets already present in every enrolled
     project's CHANGELOG.md. Never writes to any file. Idempotent."""
-    conn = _get_conn()
-    try:
-        projects = ledger_store.list_projects(conn)
-        return sync_from_files(conn, projects)
-    finally:
-        conn.close()
+    with sync_lock("ledger_files") as acquired:
+        if not acquired:
+            return {"status": "already_running", "projects": {}}
+
+        conn = _get_conn()
+        try:
+            projects = ledger_store.list_projects(conn)
+            result = sync_from_files(conn, projects)
+        finally:
+            conn.close()
+
+        counts = {
+            project: data.get("added", 0) for project, data in result["projects"].items()
+        }
+        record_sync("ledger_files", counts)
+        return result

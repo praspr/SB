@@ -240,3 +240,71 @@ def test_run_due_schedules_records_error_status_without_raising(
     result = sched.run_due_schedules()
     assert result["outcomes"]["broken"]["status"] == "error"
     assert "boom" in result["outcomes"]["broken"]["error"]
+
+
+# ---------------------------------------------------------------------------
+# run_due_schedules — lock + record_scheduler_run wiring (phase 2j)
+# ---------------------------------------------------------------------------
+
+
+def test_run_due_schedules_records_scheduler_run_when_something_fires(
+    tmp_path, monkeypatch
+) -> None:
+    db_path = tmp_path / "core.db"
+    _patch_conn(monkeypatch, db_path)
+    sched.add_scheduled_ritual(name="always", ritual="standup", cron="* * * * *")
+    monkeypatch.setattr(sched, "_ritual_dispatch", lambda: {"standup": lambda **kw: {}})
+
+    calls = []
+    monkeypatch.setattr(
+        sched, "record_scheduler_run", lambda outcomes, **kw: calls.append(outcomes)
+    )
+
+    sched.run_due_schedules()
+
+    assert len(calls) == 1
+    assert calls[0]["always"]["ran"] is True
+
+
+def test_run_due_schedules_records_idle_tick(tmp_path, monkeypatch) -> None:
+    db_path = tmp_path / "core.db"
+    _patch_conn(monkeypatch, db_path)
+    # No schedules registered at all -- an idle tick.
+
+    calls = []
+    monkeypatch.setattr(
+        sched, "record_scheduler_run", lambda outcomes, **kw: calls.append(outcomes)
+    )
+
+    sched.run_due_schedules()
+
+    assert len(calls) == 1
+    assert calls[0] == {}
+
+
+def test_run_due_schedules_already_running_returns_stub_and_does_not_log(
+    tmp_path, monkeypatch
+) -> None:
+    from contextlib import contextmanager
+
+    db_path = tmp_path / "core.db"
+    _patch_conn(monkeypatch, db_path)
+    sched.add_scheduled_ritual(name="always", ritual="standup", cron="* * * * *")
+
+    @contextmanager
+    def _fake_lock(name):
+        yield False
+
+    monkeypatch.setattr(sched, "sync_lock", _fake_lock)
+
+    calls = []
+    monkeypatch.setattr(sched, "record_scheduler_run", lambda *a, **kw: calls.append(a))
+    monkeypatch.setattr(
+        sched,
+        "_ritual_dispatch",
+        lambda: (_ for _ in ()).throw(AssertionError("must not run")),
+    )
+
+    result = sched.run_due_schedules()
+    assert result == {"status": "already_running", "outcomes": {}}
+    assert calls == []
