@@ -32,6 +32,10 @@ type PaletteItem = {
 
 const groupOrder: PaletteItem['group'][] = ['Ledger', 'Todos', 'JIRAs', 'Webex', 'Skills', 'Reports']
 
+export function PaletteHint({ text }: { text: string }) {
+  return <div className="px-3 py-10 text-center text-13 text-text-muted">{text}</div>
+}
+
 function iconFor(kind: PaletteItem['icon']) {
   if (kind === 'ledger') return <BookOpen size={15} />
   if (kind === 'todo') return <ListTodo size={15} />
@@ -261,7 +265,7 @@ export function CommandPalette() {
     close()
   }
 
-  const slashHint = 'Try /plan, /wrap, /standup, /brief, /goals, /attention, or /ledger <query>'
+  const slashHint = 'Type / for commands · paste a URL to log · Esc to close'
 
   const body = (
     <div
@@ -310,19 +314,19 @@ export function CommandPalette() {
         />
       </div>
 
-      {isSlash && slashMatches.length === 0 && (
+      {isSlash && slashMatches.length === 0 && query.trim() === '/' && (
         <div className="border-b border-border-subtle px-4 py-2 text-12 text-text-muted">{slashHint}</div>
       )}
 
       <div className="max-h-[70vh] overflow-y-auto p-3">
-        {isSlash ? (
-          slashMatches.length === 0 ? (
-            <div className="px-3 py-10 text-center text-13 text-text-muted">No matching commands.</div>
-          ) : (
-            <section className="mb-4">
-              <div className="px-2 py-1 text-12 uppercase tracking-[0.18em] text-text-muted">Commands</div>
-              <div className="mt-1 space-y-1">
-                {slashMatches.map((def, index) => (
+          {isSlash ? (
+            (slashMatches.length === 0 && query.trim() !== '/') ? (
+              <PaletteHint text="No matching commands." />
+            ) : (
+              <section className="mb-4">
+                <div className="px-2 py-1 text-12 uppercase tracking-[0.18em] text-text-muted">Commands</div>
+                <div className="mt-1 space-y-1">
+                {(query.trim() === '/' ? slashMatches.length > 0 ? slashMatches : matchSlashCommands('/'): slashMatches).map((def, index) => (
                   <button
                     key={def.cmd}
                     type="button"
@@ -342,9 +346,9 @@ export function CommandPalette() {
                   </button>
                 ))}
               </div>
-            </section>
-          )
-        ) : isUrl ? (
+              </section>
+            )
+          ) : isUrl ? (
           <section className="mb-4">
             <div className="px-2 py-1 text-12 uppercase tracking-[0.18em] text-text-muted">Paste detected</div>
             {urlHint.isLoading ? (
@@ -364,7 +368,7 @@ export function CommandPalette() {
                 </span>
               </button>
             ) : (
-              <div className="px-3 py-6 text-center text-13 text-text-muted">Could not classify this URL.</div>
+              <PaletteHint text="Could not classify this URL." />
             )}
           </section>
         ) : (
@@ -383,7 +387,7 @@ export function CommandPalette() {
             </button>
 
             {items.length === 0 ? (
-              <div className="px-3 py-10 text-center text-13 text-text-muted">No results found.</div>
+              <PaletteHint text="Type / for commands · paste a URL to log · Esc to close" />
             ) : groupOrder.map((group) => {
               const groupItems = items.filter((item) => item.group === group)
               if (groupItems.length === 0) return null

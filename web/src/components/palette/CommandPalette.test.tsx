@@ -26,6 +26,7 @@ vi.mock('@/lib/url-hints', () => ({ parseUrlHint: () => Promise.resolve({ kind: 
 vi.mock('@/lib/mcp', () => ({ callTool: () => Promise.resolve({}) }))
 
 import { CommandPalette } from '@/components/palette/CommandPalette'
+import { PaletteHint } from '@/components/palette/CommandPalette'
 
 describe('command palette', () => {
   it('renders the search shell and action row', () => {
@@ -38,7 +39,12 @@ describe('command palette', () => {
       </QueryClientProvider>
     )
     expect(html).toContain('Search ledger, todos, JIRAs, Webex, skills, and reports')
-    expect(html).toContain('type / for commands')
+    expect(html).toContain('Type / for commands')
     expect(html).toContain('Add todo')
+  })
+
+  it('renders the reusable palette hint copy', () => {
+    const html = renderToStaticMarkup(<PaletteHint text="Type / for commands · paste a URL to log · Esc to close" />)
+    expect(html).toContain('Type / for commands · paste a URL to log · Esc to close')
   })
 })
