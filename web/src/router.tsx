@@ -7,7 +7,6 @@ import { ReportsPage } from '@/pages/ReportsPage'
 import { LedgerPage } from '@/pages/LedgerPage'
 import { ProposalsPage } from '@/pages/ProposalsPage'
 import { SkillsPage } from '@/pages/SkillsPage'
-import { SignalsPage } from '@/pages/SignalsPage'
 import { TodosPage } from '@/pages/TodosPage'
 import { JirasPage } from '@/pages/JirasPage'
 import { MeetingsPage } from '@/pages/MeetingsPage'
@@ -25,7 +24,7 @@ export const router = createBrowserRouter([
       { path: 'ledger', element: <LedgerPage /> },
       { path: 'proposals', element: <ProposalsPage /> },
       { path: 'skills', element: <SkillsPage /> },
-      { path: 'signals', element: <SignalsPage /> },
+      { path: 'signals', element: <LedgerPage /> },
       { path: 'todos', element: <TodosPage /> },
       { path: 'jira', element: <JirasPage /> },
       { path: 'meetings', element: <MeetingsPage /> },

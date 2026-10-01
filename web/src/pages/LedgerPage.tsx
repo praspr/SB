@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { BookOpen, Search } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -8,11 +8,13 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { SkeletonRow } from '@/components/shared/SkeletonRow'
 import { LedgerTable } from '@/components/ledger/LedgerTable'
 import { LedgerTimeline } from '@/components/ledger/LedgerTimeline'
+import { EvidenceView } from '@/components/ledger/EvidenceView'
 import { ledgerProjects, ledgerSearch, type LedgerEntry } from '@/lib/ledger'
+import { searchSignals, syncAdapters, syncStatus, type AdapterState, type SignalRecord } from '@/lib/signals'
 import { cn } from '@/lib/utils'
 import { useSearchParams } from 'react-router-dom'
 
-type LedgerViewMode = 'timeline' | 'table'
+type LedgerViewMode = 'timeline' | 'table' | 'evidence'
 
 type LedgerPageViewProps = {
   projects: Array<{ project: string }>
@@ -36,6 +38,13 @@ type LedgerPageViewProps = {
   onView: (mode: LedgerViewMode) => void
   harnesses: string[]
   entries: LedgerEntry[]
+  evidenceSignals: SignalRecord[]
+  evidenceStates: AdapterState[]
+  evidenceQuery: string
+  onEvidenceQuery: (value: string) => void
+  onEvidenceSync: () => void
+  evidenceSyncing?: boolean
+  evidenceError?: string
   loading?: boolean
   error?: string
   selectedEntry: LedgerEntry | null
@@ -74,6 +83,13 @@ export function LedgerPageView({
   onView,
   harnesses,
   entries,
+  evidenceSignals,
+  evidenceStates,
+  evidenceQuery,
+  onEvidenceQuery,
+  onEvidenceSync,
+  evidenceSyncing,
+  evidenceError,
   loading,
   error,
   selectedEntry,
@@ -88,7 +104,7 @@ export function LedgerPageView({
           <p className="mt-1 text-13 text-text-secondary">Search the append-only narrative ledger by project, session, and source.</p>
         </div>
         <div className="flex items-center gap-2 rounded-lg border border-border-subtle bg-bg-panel p-1">
-          {(['timeline', 'table'] as LedgerViewMode[]).map((mode) => (
+          {(['timeline', 'table', 'evidence'] as LedgerViewMode[]).map((mode) => (
             <button
               key={mode}
               type="button"
@@ -190,7 +206,17 @@ export function LedgerPageView({
         </div>
       </section>
 
-      {loading ? (
+      {view === 'evidence' ? (
+        <EvidenceView
+          signals={evidenceSignals}
+          states={evidenceStates}
+          query={evidenceQuery}
+          onQuery={onEvidenceQuery}
+          syncing={Boolean(evidenceSyncing)}
+          error={evidenceError}
+          onSync={onEvidenceSync}
+        />
+      ) : loading ? (
         <SkeletonRow lines={5} />
       ) : error ? (
         <div className="rounded-md border border-danger/40 bg-danger/5 p-3 text-13 text-danger">{error}</div>
@@ -253,6 +279,7 @@ export function LedgerPageView({
 }
 
 export function LedgerPage() {
+  const client = useQueryClient()
   const [params] = useSearchParams()
   const [project, setProject] = useState(params.get('project') ?? '')
   const [sourceHarness, setSourceHarness] = useState(params.get('source_harness') ?? '')
@@ -262,9 +289,11 @@ export function LedgerPage() {
   const [since, setSince] = useState(toSinceValue(params.get('since')))
   const [until, setUntil] = useState(params.get('until') ?? '')
   const [limit, setLimit] = useState(100)
-  const [view, setView] = useState<LedgerViewMode>('timeline')
+  const [view, setView] = useState<LedgerViewMode>((params.get('view') as LedgerViewMode | null) ?? 'timeline')
   const [selectedVerbs, setSelectedVerbs] = useState<string[]>([])
   const [selectedEntry, setSelectedEntry] = useState<LedgerEntry | null>(null)
+  const [evidenceQuery, setEvidenceQuery] = useState('')
+  const [evidenceError, setEvidenceError] = useState<string>()
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearch(search), 200)
@@ -287,6 +316,27 @@ export function LedgerPage() {
         limit,
       })
     },
+  })
+  const evidenceSignals = useQuery({
+    queryKey: ['signals', 'ledger-evidence', evidenceQuery],
+    queryFn: () => searchSignals({ query: evidenceQuery || undefined }),
+    enabled: view === 'evidence',
+  })
+  const evidenceStates = useQuery({
+    queryKey: ['sync-status', 'ledger-evidence'],
+    queryFn: syncStatus,
+    enabled: view === 'evidence',
+  })
+  const syncEvidence = useMutation({
+    mutationFn: syncAdapters,
+    onSuccess: () => {
+      setEvidenceError(undefined)
+      void client.invalidateQueries({ queryKey: ['signals'] })
+      void client.invalidateQueries({ queryKey: ['sync-status'] })
+      void evidenceSignals.refetch()
+      void evidenceStates.refetch()
+    },
+    onError: (err: Error) => setEvidenceError(err.message),
   })
 
   const allRows = searchQuery.data ?? []
@@ -333,6 +383,15 @@ export function LedgerPage() {
       onView={setView}
       harnesses={harnesses}
       entries={filtered}
+      evidenceSignals={evidenceSignals.data ?? []}
+      evidenceStates={evidenceStates.data?.states ?? []}
+      evidenceQuery={evidenceQuery}
+      onEvidenceQuery={setEvidenceQuery}
+      onEvidenceSync={() => {
+        syncEvidence.mutate()
+      }}
+      evidenceSyncing={syncEvidence.isPending}
+      evidenceError={evidenceSignals.isError ? 'Could not load evidence.' : evidenceError}
       loading={searchQuery.isLoading}
       error={searchQuery.isError ? 'Could not load ledger entries.' : undefined}
       selectedEntry={selectedEntry}

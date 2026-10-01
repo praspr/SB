@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ListTodo, Calendar, MessageSquare, Ticket, Library, Radio, ChevronLeft, ChevronRight, Settings, FileText, BookOpen, Inbox, Target, Plus, Command } from 'lucide-react'
+import { ListTodo, Calendar, MessageSquare, Ticket, Library, ChevronLeft, ChevronRight, Settings, FileText, BookOpen, Inbox, Target, Plus, Command } from 'lucide-react'
 import { SettingsPopover } from '@/components/layout/SettingsPopover'
 import { webexAttentionRanked } from '@/lib/triage'
 import { useUiStore } from '@/lib/store'
@@ -22,7 +22,6 @@ const navGroups = [
       { to: '/goals', label: 'Goals', icon: Target, end: false },
       { to: '/reports', label: 'Reports', icon: FileText, end: false },
       { to: '/ledger', label: 'Ledger', icon: BookOpen, end: false },
-      { to: '/signals', label: 'Signals', icon: Radio, end: false },
     ],
   },
   {

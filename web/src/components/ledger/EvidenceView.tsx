@@ -1,10 +1,7 @@
-import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { RefreshCw } from 'lucide-react'
-import { useSearchParams } from 'react-router-dom'
-import { cite, searchSignals, syncAdapters, syncStatus, type AdapterState, type SignalRecord } from '@/lib/signals'
+import { cite, type AdapterState, type SignalRecord } from '@/lib/signals'
 
-export function SignalsView({
+export function EvidenceView({
   signals,
   states,
   query,
@@ -25,22 +22,25 @@ export function SignalsView({
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-20 font-semibold text-text-primary">Signals</h1>
-          <p className="mt-1 text-13 text-text-secondary">Local evidence cited as [signal:N].</p>
+          <div className="text-12 uppercase tracking-[0.18em] text-text-muted">Evidence</div>
+          <p className="mt-1 text-13 text-text-secondary">Local signals you can cite as evidence alongside ledger rows.</p>
         </div>
         <button type="button" onClick={onSync} className="inline-flex items-center gap-2 rounded-lg border border-border-subtle px-3 py-1.5 text-13">
           <RefreshCw size={14} className={syncing ? 'animate-spin' : undefined} />
           {syncing ? 'Syncing adapters' : 'Sync adapters'}
         </button>
       </div>
-      {error && <p className="text-13 text-danger">{error}</p>}
+
+      {error ? <p className="text-13 text-danger">{error}</p> : null}
+
       <input
-        aria-label="Search signals"
+        aria-label="Search evidence"
         value={query}
         onChange={(event) => onQuery(event.target.value)}
-        placeholder="Search signals"
+        placeholder="Search local evidence"
         className="rounded-lg border border-border-subtle bg-bg-panel px-3 py-1.5 text-13"
       />
+
       <ul className="space-y-2">
         {(states ?? []).map((state) => (
           <li key={state.adapter} className="text-12 text-text-muted">
@@ -48,6 +48,7 @@ export function SignalsView({
           </li>
         ))}
       </ul>
+
       <ul className="space-y-2">
         {(signals ?? []).map((signal) => (
           <li key={signal.id} className="rounded-xl border border-border-subtle bg-bg-panel/92 p-4">
@@ -59,38 +60,5 @@ export function SignalsView({
         ))}
       </ul>
     </div>
-  )
-}
-
-export function SignalsPage() {
-  const client = useQueryClient()
-  const [searchParams] = useSearchParams()
-  const source = searchParams.get('source') ?? undefined
-  const [query, setQuery] = useState('')
-  const [error, setError] = useState<string>()
-  const signals = useQuery({
-    queryKey: ['signals', query, source],
-    queryFn: () => searchSignals({ query, source }),
-  })
-  const status = useQuery({ queryKey: ['sync-status'], queryFn: syncStatus })
-  const sync = useMutation({
-    mutationFn: syncAdapters,
-    onSuccess: () => {
-      setError(undefined)
-      void client.invalidateQueries({ queryKey: ['signals'] })
-      void client.invalidateQueries({ queryKey: ['sync-status'] })
-    },
-    onError: (err: Error) => setError(err.message),
-  })
-  return (
-    <SignalsView
-      signals={signals.data}
-      states={status.data?.states}
-      query={query}
-      onQuery={setQuery}
-      syncing={sync.isPending}
-      error={signals.isError ? 'Could not load signals.' : error}
-      onSync={() => sync.mutate()}
-    />
   )
 }

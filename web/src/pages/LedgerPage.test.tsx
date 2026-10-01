@@ -27,6 +27,11 @@ describe('ledger page', () => {
         onView={() => undefined}
         harnesses={[]}
         entries={[]}
+        evidenceSignals={[]}
+        evidenceStates={[]}
+        evidenceQuery=""
+        onEvidenceQuery={() => undefined}
+        onEvidenceSync={() => undefined}
         selectedEntry={null}
         onSelectEntry={() => undefined}
         onLoadOlder={() => undefined}
@@ -34,6 +39,7 @@ describe('ledger page', () => {
     )
     expect(html).toContain('Ledger')
     expect(html).toContain('timeline')
+    expect(html).toContain('evidence')
     expect(html).toContain('Load older')
   })
 })
