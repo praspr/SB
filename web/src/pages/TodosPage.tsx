@@ -21,19 +21,35 @@ import {
   type TodoStatusFilter,
 } from '@/lib/todo-groups'
 
+type TodoFilterKey = 'jira' | 'recurring' | 'due-today'
+
+const FILTER_LABELS: Record<TodoFilterKey, string> = {
+  jira: 'Linked to JIRA',
+  recurring: 'Recurring',
+  'due-today': 'Due today',
+}
+
 export function TodosPage() {
   const client = useQueryClient()
   const { data: tasks, isLoading } = useQuery({ queryKey: ['tasks', 'rich'], queryFn: fetchRichTasks })
   const goals = useQuery({ queryKey: ['goals-v2', 'todos'], queryFn: async () => listGoalsV2(), staleTime: 30_000 })
   const jiraTickets = useQuery({ queryKey: ['jira', 'tickets', 'todos-import-count'], queryFn: () => listJiraTickets({ limit: 200 }), staleTime: 30_000 })
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const requestedStatus = searchParams.get('status')
   const initialStatus: TodoStatusFilter =
     requestedStatus === 'all' || requestedStatus === 'completed' ? requestedStatus : 'open'
+  const initialGoal = searchParams.get('goal') ?? 'all'
+  const initialFilters = new Set(
+    (searchParams.get('filter') ?? '')
+      .split(',')
+      .filter((value): value is TodoFilterKey => value === 'jira' || value === 'recurring' || value === 'due-today'),
+  )
   const [status, setStatus] = useState<TodoStatusFilter>(initialStatus)
   const [priority, setPriority] = useState<Priority | 'all'>('all')
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<TodoSort>('priority')
+  const [goalFilter, setGoalFilter] = useState(initialGoal)
+  const [activeFilters, setActiveFilters] = useState<Set<TodoFilterKey>>(initialFilters)
   const [importOpen, setImportOpen] = useState(false)
   const [importStatuses, setImportStatuses] = useState<string[]>(['Open', 'In Progress'])
   const [importPriority, setImportPriority] = useState<'all' | 'Highest' | 'High' | 'Medium' | 'Low' | 'Lowest'>('all')
@@ -63,10 +79,20 @@ export function TodosPage() {
     const day = String(now.getDate()).padStart(2, '0')
     return `${now.getFullYear()}-${month}-${day}`
   }, [])
-  const summary = useMemo(() => summarizeTodos(tasks ?? [], today), [tasks, today])
+  const filteredTasks = useMemo(() => {
+    return (tasks ?? []).filter((task) => {
+      if (goalFilter !== 'all' && String(task.goal_id ?? '') !== goalFilter) return false
+      if (activeFilters.has('jira') && !task.jira_ref) return false
+      if (activeFilters.has('recurring') && !task.recurrence_rule) return false
+      if (activeFilters.has('due-today') && task.due_date !== today) return false
+      return true
+    })
+  }, [activeFilters, goalFilter, tasks, today])
+
+  const summary = useMemo(() => summarizeTodos(filteredTasks, today), [filteredTasks, today])
   const groups = useMemo(
-    () => organizeTodos(tasks ?? [], { status, priority, query, sort, today }),
-    [priority, query, sort, status, tasks, today],
+    () => organizeTodos(filteredTasks, { status, priority, query, sort, today }),
+    [filteredTasks, priority, query, sort, status, today],
   )
   const visibleCount = groups.reduce((count, group) => count + group.tasks.length, 0)
 
@@ -76,6 +102,26 @@ export function TodosPage() {
     return rows.filter((ticket) => importStatuses.length === 0 || importStatuses.includes(ticket.status))
       .filter((ticket) => importPriority === 'all' || ticket.priority === importPriority)
   }, [importPriority, importStatuses, jiraTickets.data])
+
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams)
+    if (goalFilter !== 'all') next.set('goal', goalFilter)
+    else next.delete('goal')
+
+    if (activeFilters.size > 0) next.set('filter', Array.from(activeFilters).sort().join(','))
+    else next.delete('filter')
+
+    setSearchParams(next, { replace: true })
+  }, [activeFilters, goalFilter, searchParams, setSearchParams])
+
+  function toggleFilter(filter: TodoFilterKey) {
+    setActiveFilters((current) => {
+      const next = new Set(current)
+      if (next.has(filter)) next.delete(filter)
+      else next.add(filter)
+      return next
+    })
+  }
 
   return (
     <div className="space-y-6">
@@ -129,6 +175,54 @@ export function TodosPage() {
               <option value="title">Title</option>
             </select>
           </label>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setGoalFilter('all')
+              setActiveFilters(new Set())
+            }}
+            className={cn(
+              'rounded-full border px-3 py-1.5 text-12 transition-colors duration-fast ease-out',
+              goalFilter === 'all' && activeFilters.size === 0
+                ? 'border-border-strong bg-accent-500/15 text-text-primary'
+                : 'border-border-subtle bg-bg-panel text-text-secondary hover:border-border-strong hover:text-text-primary',
+            )}
+          >
+            All
+          </button>
+          <label className="flex items-center gap-2 rounded-full border border-border-subtle bg-bg-panel px-3 py-1.5 text-12 text-text-secondary">
+            <span>Goal:</span>
+            <select
+              value={goalFilter}
+              onChange={(event) => setGoalFilter(event.target.value)}
+              className="bg-transparent text-12 text-text-primary outline-none"
+            >
+              <option value="all">Any</option>
+              {(goals.data ?? []).map((goal) => (
+                <option key={goal.id} value={String(goal.id)}>{goal.title}</option>
+              ))}
+            </select>
+          </label>
+          {(Object.keys(FILTER_LABELS) as TodoFilterKey[]).map((filter) => {
+            const active = activeFilters.has(filter)
+            return (
+              <button
+                key={filter}
+                type="button"
+                onClick={() => toggleFilter(filter)}
+                className={cn(
+                  'rounded-full border px-3 py-1.5 text-12 transition-colors duration-fast ease-out',
+                  active
+                    ? 'border-border-strong bg-accent-500/15 text-text-primary'
+                    : 'border-border-subtle bg-bg-panel text-text-secondary hover:border-border-strong hover:text-text-primary',
+                )}
+              >
+                {FILTER_LABELS[filter]}
+              </button>
+            )
+          })}
         </div>
         <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-1 rounded-lg border border-border-subtle bg-bg-panel p-1">
