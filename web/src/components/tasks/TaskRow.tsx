@@ -2,9 +2,10 @@ import { motion } from 'framer-motion'
 import { Check, Pencil } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { Task, Priority } from '@/lib/mock-data'
+import { useToast } from '@/lib/useToast'
 import { useUiStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
-import { useCompleteTask } from '@/lib/queries'
+import { useCompleteTask, useUncompleteTask } from '@/lib/queries'
 
 const priorityLabel: Record<Priority, string> = {
   1: 'P1',
@@ -28,7 +29,9 @@ const domainClasses: Record<Task['domain'], string> = {
 
 export function TaskRow({ task, goalTitle }: { task: Task; goalTitle?: string }) {
   const completeTask = useCompleteTask()
+  const uncompleteTask = useUncompleteTask()
   const openAddTodo = useUiStore((state) => state.openAddTodo)
+  const showToast = useToast((state) => state.show)
 
   return (
     <motion.div
@@ -39,14 +42,24 @@ export function TaskRow({ task, goalTitle }: { task: Task; goalTitle?: string })
       className="group flex min-h-[40px] items-center gap-3 rounded-lg border border-border-subtle bg-bg-panel px-3 py-2 transition-colors duration-fast ease-out hover:border-border-strong hover:bg-bg-elevated"
     >
           <button
-            onClick={() => !task.is_completed && completeTask.mutate(task.id)}
+            onClick={() => {
+              if (task.is_completed) {
+                uncompleteTask.mutate(task.id, {
+                  onSuccess: () => showToast({ kind: 'success', message: 'Reopened' }),
+                })
+                return
+              }
+              completeTask.mutate(task.id, {
+                onSuccess: () => showToast({ kind: 'success', message: 'Marked complete' }),
+              })
+            }}
             className={cn(
               'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors duration-fast',
               task.is_completed
                 ? 'border-success bg-success/20 text-success'
                 : 'border-border-strong text-transparent hover:border-accent-500'
             )}
-            aria-label="Mark complete"
+            aria-label={task.is_completed ? 'Reopen todo' : 'Mark complete'}
           >
             <Check size={12} strokeWidth={3} />
           </button>

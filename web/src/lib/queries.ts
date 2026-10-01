@@ -71,6 +71,10 @@ export function markTaskCompleted(tasks: Task[] | undefined, taskId: number): Ta
   return tasks?.map((task) => (task.id === taskId ? { ...task, is_completed: true } : task))
 }
 
+export function reopenTask(tasks: Task[] | undefined, taskId: number): Task[] | undefined {
+  return tasks?.map((task) => (task.id === taskId ? { ...task, is_completed: false } : task))
+}
+
 export type TaskUpdateInput = {
   title?: string
   description?: string
@@ -114,6 +118,11 @@ export async function updateTask(taskId: number, patch: TaskUpdateInput): Promis
   return todoToTask(raw)
 }
 
+export async function uncompleteTask(taskId: number): Promise<number> {
+  await callTool<SbTodo>('todo_uncomplete', { todo_id: taskId })
+  return taskId
+}
+
 export function useTasks() {
   return useQuery({ queryKey: TASKS_QUERY_KEY, queryFn: fetchTasks, retry: 1 })
 }
@@ -149,6 +158,27 @@ export function useCompleteTask() {
       const previous = queryClient.getQueriesData<Task[]>({ queryKey: TASKS_QUERY_KEY })
       queryClient.setQueriesData<Task[]>({ queryKey: TASKS_QUERY_KEY }, (old) =>
         markTaskCompleted(old, taskId)
+      )
+      return { previous }
+    },
+    onError: (_err, _taskId, context) => {
+      restoreSnapshots(queryClient, context?.previous)
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY })
+    },
+  })
+}
+
+export function useUncompleteTask() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: uncompleteTask,
+    onMutate: async (taskId: number) => {
+      await queryClient.cancelQueries({ queryKey: TASKS_QUERY_KEY })
+      const previous = queryClient.getQueriesData<Task[]>({ queryKey: TASKS_QUERY_KEY })
+      queryClient.setQueriesData<Task[]>({ queryKey: TASKS_QUERY_KEY }, (old) =>
+        reopenTask(old, taskId),
       )
       return { previous }
     },

@@ -73,6 +73,27 @@ describe('todo queries', () => {
     expect(client.getQueryData<Task[]>(['tasks'])?.[0].is_completed).toBe(false)
   })
 
+  it('reopens a completed task snapshot', async () => {
+    const { reopenTask } = await import('./queries')
+    const completed: Task = {
+      id: 7,
+      title: 'Write the note',
+      priority: 2,
+      is_completed: true,
+      domain: 'work',
+      source: 'manual',
+    }
+    expect(reopenTask([completed], 7)?.[0].is_completed).toBe(false)
+  })
+
+  it('calls todo_uncomplete for reopen', async () => {
+    const { callTool } = await import('./mcp')
+    vi.mocked(callTool).mockResolvedValue(sample)
+    const { uncompleteTask } = await import('./queries')
+    await uncompleteTask(7)
+    expect(callTool).toHaveBeenCalledWith('todo_uncomplete', { todo_id: 7 })
+  })
+
   it('updates a todo through todo_update', async () => {
     const { callTool } = await import('./mcp')
     vi.mocked(callTool).mockResolvedValue(sample)

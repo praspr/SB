@@ -12,6 +12,7 @@ vi.mock('@/lib/goals', () => ({ listGoalsV2: () => Promise.resolve([]) }))
 vi.mock('@/lib/queries', () => ({
   listJiraTickets: () => Promise.resolve([{ key: 'CXP-1', status: 'Open', priority: 'High', title: 'Ticket' }]),
   useCompleteTask: () => ({ mutate: () => undefined }),
+  useUncompleteTask: () => ({ mutate: () => undefined }),
   useAddTask: () => ({ mutate: () => undefined }),
 }))
 vi.mock('react-router-dom', async () => {
@@ -90,5 +91,28 @@ describe('todos ui', () => {
       </QueryClientProvider>,
     )
     expect(html).toContain('Edit')
+  })
+
+  it('shows a reopen label for completed tasks', () => {
+    const client = new QueryClient()
+    const html = renderToStaticMarkup(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <TaskList
+            tasks={[
+              {
+                id: 1,
+                title: 'Finish rollout',
+                priority: 1,
+                is_completed: true,
+                domain: 'work',
+                source: 'manual',
+              },
+            ]}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    expect(html).toContain('Reopen todo')
   })
 })
