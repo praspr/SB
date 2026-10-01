@@ -6,6 +6,7 @@ import { TopBar } from './TopBar'
 import { useUiStore } from '@/lib/store'
 import { SkeletonRow } from '@/components/shared/SkeletonRow'
 import { ToastPortal } from '@/components/shell/ToastPortal'
+import { ReminderPoller } from '@/components/reminders/ReminderPoller'
 import { AddTodoDialog } from '@/components/tasks/AddTodoDialog'
 
 const CommandPalette = lazy(() => import('@/components/palette/CommandPalette').then((module) => ({ default: module.CommandPalette })))
@@ -83,6 +84,7 @@ export function AppShell() {
         </div>
       </main>
       <ToastPortal />
+      <ReminderPoller />
       {commandPaletteLoaded ? (
         <Suspense fallback={<SkeletonRow lines={4} />}>
           <CommandPalette />
