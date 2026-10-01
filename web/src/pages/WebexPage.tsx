@@ -101,24 +101,12 @@ export function WebexPage() {
       <section className="rounded-xl border border-border-subtle bg-bg-panel/92 p-5">
         <div className="flex items-center justify-between">
           <h2 className="text-16 font-semibold text-text-primary">Needs attention</h2>
-          <Link to="/meetings" className="text-12 text-text-secondary underline">
-            Meetings
+          <Link to="/attention" className="inline-flex items-center gap-2 rounded-full border border-border-subtle bg-black/20 px-3 py-1 text-12 text-text-secondary hover:border-border-strong hover:text-text-primary">
+            <span>{attentionItems.length}</span>
+            <span>Open inbox</span>
           </Link>
         </div>
-        <p className="mt-1 text-12 text-text-muted">Direct messages and @mentions only.</p>
-        <div className="mt-4">
-          {attention.isLoading ? (
-            <SkeletonRow lines={3} />
-          ) : attentionItems.length === 0 ? (
-            <EmptyState title="Nothing waiting" body="Direct messages and @mentions show up after a sync." icon={<MessageSquare size={18} />} />
-          ) : (
-            <div className="space-y-2">
-              {attentionItems.map((message) => (
-                <MessagePreview key={message.id} message={message} />
-              ))}
-            </div>
-          )}
-        </div>
+        <p className="mt-1 text-12 text-text-muted">Attention is triaged in one place so this page can stay focused on spaces and summaries.</p>
       </section>
 
       <div className="grid gap-6 xl:grid-cols-2">

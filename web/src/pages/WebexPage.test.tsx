@@ -33,6 +33,6 @@ describe('webex page', () => {
     )
     expect(html).toContain('Sign in to Webex')
     expect(html).toContain('offline')
-    expect(html).toContain('Nothing waiting')
+    expect(html).toContain('Open inbox')
   })
 })
