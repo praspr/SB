@@ -1,11 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { Inbox } from 'lucide-react'
 import { AttentionRow } from '@/components/attention/AttentionRow'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { logAttentionToLedger, webexAttentionFiltered, type AttentionItem } from '@/lib/triage'
-
-type ToastState = { id: number; label: string } | null
+import { useToast } from '@/lib/useToast'
 
 function sectionTitle(kind: string) {
   if (kind === 'mention') return 'Mentions'
@@ -19,13 +18,11 @@ export function AttentionView({
   items,
   loading,
   error,
-  toast,
   onLog,
 }: {
   items: AttentionItem[]
   loading?: boolean
   error?: string
-  toast: ToastState
   onLog: (item: AttentionItem, input: { project: string; action_verb: string; summary: string; body?: string }) => Promise<unknown>
 }) {
   const grouped = useMemo(() => {
@@ -38,10 +35,6 @@ export function AttentionView({
         <h1 className="text-20 font-semibold text-text-primary">Attention Inbox</h1>
         <p className="mt-1 text-13 text-text-secondary">{items.length} unread mentions, DMs, and unanswered questions need review.</p>
       </div>
-
-      {toast ? (
-        <div className="rounded-md border border-success/40 bg-success/10 p-3 text-13 text-success">Logged as [ledger:{toast.id}]</div>
-      ) : null}
 
       {error ? <div className="rounded-md border border-danger/40 bg-danger/5 p-3 text-13 text-danger">{error}</div> : null}
 
@@ -74,7 +67,7 @@ export function AttentionView({
 }
 
 export function AttentionPage() {
-  const [toast, setToast] = useState<ToastState>(null)
+  const toast = useToast((s) => s.show)
   const attention = useQuery({
     queryKey: ['triage', 'attention'],
     queryFn: () => webexAttentionFiltered(30),
@@ -99,8 +92,7 @@ export function AttentionPage() {
       })
     },
     onSuccess: (result) => {
-      setToast({ id: result.id, label: `ledger:${result.id}` })
-      setTimeout(() => setToast(null), 2500)
+      toast({ kind: 'success', message: `Logged as [ledger:${result.id}]` })
     },
   })
 
@@ -109,7 +101,6 @@ export function AttentionPage() {
       items={attention.data ?? []}
       loading={attention.isLoading}
       error={attention.isError ? 'Could not load the attention inbox.' : log.isError ? 'Could not log that item to the ledger.' : undefined}
-      toast={toast}
       onLog={(item, input) => log.mutateAsync({ item, input })}
     />
   )

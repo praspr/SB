@@ -4,6 +4,7 @@ import type { LedgerEntry } from '@/lib/ledger'
 import type { ReportResult } from '@/lib/reports'
 import { Button } from '@/components/ui/button'
 import { buildMailto, WebexPostButton } from '@/components/reports/WebexPostButton'
+import { useToast } from '@/lib/useToast'
 
 type ReportViewerProps = {
   report?: ReportResult | null
@@ -80,6 +81,7 @@ export function ReportViewer({
   onSave,
 }: ReportViewerProps) {
   const [selectedCitation, setSelectedCitation] = useState<number | null>(null)
+  const showToast = useToast((s) => s.show)
 
   const citedEntries = useMemo(() => {
     const byId = new Map(entries.map((entry) => [entry.id, entry]))
@@ -127,6 +129,7 @@ export function ReportViewer({
               <Button
                 variant="secondary"
                 onClick={() => {
+                  showToast({ kind: 'info', message: 'Opened email draft.' })
                   window.location.href = buildMailto(date || new Date().toISOString().slice(0, 10), report.markdown)
                 }}
               >

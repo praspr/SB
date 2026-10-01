@@ -10,6 +10,7 @@ import { ReportViewer } from '@/components/reports/ReportViewer'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { LedgerEntry } from '@/lib/ledger'
+import { useToast } from '@/lib/useToast'
 import { cn } from '@/lib/utils'
 
 type ReportTemplate = 'daily' | 'weekly' | 'monthly' | 'query' | 'today' | 'wrap' | 'standup'
@@ -282,6 +283,7 @@ export function ReportsPage() {
   const [report, setReport] = useState<ReportResult | null>(null)
   const [error, setError] = useState<string>()
   const [recentRuns, setRecentRuns] = useState<RecentRun[]>(() => loadRecentRuns())
+  const showToast = useToast((s) => s.show)
 
   const projects = useQuery({ queryKey: ['ledger', 'projects'], queryFn: ledgerProjects, staleTime: 30_000 })
 
@@ -316,6 +318,7 @@ export function ReportsPage() {
       if (data.error) {
         setError(data.error)
         setReport(null)
+        showToast({ kind: 'error', message: data.error })
         return
       }
       setError(undefined)
@@ -334,6 +337,7 @@ export function ReportsPage() {
     onError: (err: Error) => {
       setError(err.message || 'Could not run report.')
       setReport(null)
+      showToast({ kind: 'error', message: err.message || 'Could not run report.' })
     },
   })
 
@@ -347,6 +351,9 @@ export function ReportsPage() {
         body: report.markdown,
         source_harness: 'web',
       })
+    },
+    onSuccess: () => {
+      showToast({ kind: 'success', message: `Saved ${template} report snapshot` })
     },
   })
 
@@ -383,7 +390,10 @@ export function ReportsPage() {
       onTabChange={setActiveTab}
       onRun={() => runReport.mutate()}
       onCopy={() => {
-        if (report?.markdown && navigator.clipboard) void navigator.clipboard.writeText(report.markdown)
+        if (report?.markdown && navigator.clipboard) {
+          void navigator.clipboard.writeText(report.markdown)
+          showToast({ kind: 'success', message: 'Copied report markdown' })
+        }
       }}
       onSave={() => saveNote.mutate()}
     />

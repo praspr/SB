@@ -13,6 +13,7 @@ import { QuickAddInput, type QuickAddInputHandle } from '@/components/tasks/Quic
 import type { Priority } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 import { useUiStore } from '@/lib/store'
+import { useToast } from '@/lib/useToast'
 import {
   organizeTodos,
   summarizeTodos,
@@ -37,14 +38,13 @@ export function TodosPage() {
   const [importStatuses, setImportStatuses] = useState<string[]>(['Open', 'In Progress'])
   const [importPriority, setImportPriority] = useState<'all' | 'Highest' | 'High' | 'Medium' | 'Low' | 'Lowest'>('all')
   const [dryRun, setDryRun] = useState(true)
-  const [toast, setToast] = useState('')
   const quickAddRef = useRef<QuickAddInputHandle>(null)
   const focusQuickAddSignal = useUiStore((s) => s.focusQuickAddSignal)
+  const showToast = useToast((s) => s.show)
   const importJira = useMutation({
     mutationFn: () => bulkImportJiraToTodos({ statuses: importStatuses, dry_run: dryRun }),
     onSuccess: (result) => {
-      setToast(`${result.imported} imported, ${result.skipped} skipped`)
-      setTimeout(() => setToast(''), 3000)
+      showToast({ kind: 'success', message: `${result.imported} imported, ${result.skipped} skipped` })
       setImportOpen(false)
       void client.invalidateQueries({ queryKey: ['tasks'] })
     },
@@ -79,7 +79,6 @@ export function TodosPage() {
 
   return (
     <div className="space-y-6">
-      {toast ? <div className="rounded-md border border-success/40 bg-success/10 p-3 text-13 text-success">{toast}</div> : null}
       <div className="flex flex-wrap items-center gap-3">
         <div className="min-w-[280px] flex-1">
           <QuickAddInput ref={quickAddRef} />

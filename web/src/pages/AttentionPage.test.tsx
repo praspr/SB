@@ -15,7 +15,7 @@ vi.mock('@/lib/triage', async () => {
 describe('attention page', () => {
   it('shows inbox zero', () => {
     const html = renderToStaticMarkup(
-      <AttentionView items={[]} toast={null} onLog={async () => undefined} />
+      <AttentionView items={[]} onLog={async () => undefined} />
     )
     expect(html).toContain('Inbox zero')
     expect(html).toContain('Nothing needs your attention right now.')
@@ -41,7 +41,6 @@ describe('attention page', () => {
             suggested_action_verb: 'Discussed',
           },
         ]}
-        toast={{ id: 12, label: 'ledger:12' }}
         onLog={async () => undefined}
       />
     )
@@ -49,7 +48,6 @@ describe('attention page', () => {
     expect(html).toContain('Ada')
     expect(html).toContain('Log to ledger')
     expect(html).toContain('Create todo')
-    expect(html).toContain('Logged as [ledger:12]')
   })
 
   it('shows general Webex messages instead of dropping them', () => {
@@ -70,7 +68,6 @@ describe('attention page', () => {
             suggested_action_verb: 'Reviewed',
           },
         ]}
-        toast={null}
         onLog={async () => undefined}
       />
     )
@@ -100,7 +97,6 @@ describe('attention page', () => {
             suggested_action_verb: 'Discussed',
           },
         ]}
-        toast={null}
         onLog={async () => undefined}
       />
     )

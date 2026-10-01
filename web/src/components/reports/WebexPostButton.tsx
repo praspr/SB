@@ -5,6 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { listWebexSpaces, webexPostMessage, type WebexSpaceOption } from '@/lib/webex-post'
+import { useToast } from '@/lib/useToast'
 
 const MAILTO_MAX_BODY_CHARS = 8000
 const TRUNCATION_SUFFIX = '\u2026\n\n(truncated \u2014 see dashboard for full content)'
@@ -71,8 +72,8 @@ export function WebexPostPopoverBody({
 export function WebexPostButton({ markdown }: { markdown: string }) {
   const [open, setOpen] = useState(false)
   const [spaceId, setSpaceId] = useState('')
-  const [successLabel, setSuccessLabel] = useState<string>()
   const [error, setError] = useState<string>()
+  const showToast = useToast((s) => s.show)
 
   const spacesQuery = useQuery({
     queryKey: ['webex-post', 'spaces'],
@@ -87,15 +88,16 @@ export function WebexPostButton({ markdown }: { markdown: string }) {
       if (result.posted) {
         const space = (spacesQuery.data ?? []).find((s) => s.id === spaceId)
         setError(undefined)
-        setSuccessLabel(`Posted to ${space?.name || spaceId}`)
+        showToast({ kind: 'success', message: `Posted to ${space?.name || spaceId}` })
+        setOpen(false)
       } else {
-        setSuccessLabel(undefined)
         setError(result.error || 'Could not post to Webex.')
+        showToast({ kind: 'error', message: result.error || 'Could not post to Webex.' })
       }
     },
     onError: (err: Error) => {
-      setSuccessLabel(undefined)
       setError(err.message || 'Could not post to Webex.')
+      showToast({ kind: 'error', message: err.message || 'Could not post to Webex.' })
     },
   })
 
@@ -115,7 +117,6 @@ export function WebexPostButton({ markdown }: { markdown: string }) {
           onPost={() => post.mutate()}
           posting={post.isPending}
           error={error}
-          successLabel={successLabel}
         />
       </PopoverContent>
     </Popover>

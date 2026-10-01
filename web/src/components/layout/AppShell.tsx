@@ -5,6 +5,7 @@ import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { useUiStore } from '@/lib/store'
 import { CommandPalette } from '@/components/palette/CommandPalette'
+import { ToastPortal } from '@/components/shell/ToastPortal'
 import { AddTodoDialog } from '@/components/tasks/AddTodoDialog'
 
 const titles: Record<string, { title: string; subtitle?: string }> = {
@@ -73,6 +74,7 @@ export function AppShell() {
           </AnimatePresence>
         </div>
       </main>
+      <ToastPortal />
       <CommandPalette />
       <AddTodoDialog />
     </div>
