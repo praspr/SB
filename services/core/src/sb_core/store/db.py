@@ -314,6 +314,12 @@ def _m10_webex_threads(conn: sqlite3.Connection) -> None:
         """)
 
 
+def _m11_webex_handled(conn: sqlite3.Connection) -> None:
+    """Local handled state for Webex attention items (phase 2e)."""
+    _add_column(conn, "sb_webex_messages", "handled_at", "TEXT")
+    _add_column(conn, "sb_webex_messages", "handled_action", "TEXT")
+
+
 _MIGRATIONS: list[tuple[int, Callable[[sqlite3.Connection], None]]] = [
     (1, _m1_metadata),
     (2, _m2_skills),
@@ -325,6 +331,7 @@ _MIGRATIONS: list[tuple[int, Callable[[sqlite3.Connection], None]]] = [
     (8, _m8_ledger),
     (9, _m9_batch),
     (10, _m10_webex_threads),
+    (11, _m11_webex_handled),
 ]
 
 _REQUIRED_COLUMNS: dict[str, dict[str, str]] = {
@@ -345,6 +352,8 @@ _REQUIRED_COLUMNS: dict[str, dict[str, str]] = {
         "parent_message_id": "TEXT",
         "parent_sender_email": "TEXT",
         "is_reply_to_me": "INTEGER NOT NULL DEFAULT 0",
+        "handled_at": "TEXT",
+        "handled_action": "TEXT",
     },
 }
 

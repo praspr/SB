@@ -337,11 +337,16 @@ def _parse_llm_drafts(
 
 
 @mcp.tool()
-def webex_attention_ranked(limit: int = 30) -> list[dict[str, Any]]:
+def webex_attention_ranked(
+    limit: int = 30, include_handled: bool = False
+) -> list[dict[str, Any]]:
     """Return ranked Webex attention items with staleness and suggested verbs."""
     conn = _get_conn()
     try:
-        ranked = attention(list_messages(conn))[: max(1, min(limit, 50))]
+        rows = list_messages(conn)
+        if not include_handled:
+            rows = [row for row in rows if row.get("handled_at") is None]
+        ranked = attention(rows)[: max(1, min(limit, 50))]
     finally:
         conn.close()
 
@@ -349,7 +354,9 @@ def webex_attention_ranked(limit: int = 30) -> list[dict[str, Any]]:
 
 
 @mcp.tool()
-def webex_attention_filtered(limit: int = 30) -> list[dict[str, Any]]:
+def webex_attention_filtered(
+    limit: int = 30, include_handled: bool = False
+) -> list[dict[str, Any]]:
     """Ranked Webex attention items with messages from muted spaces removed.
 
     Wraps the same ranking as ``webex_attention_ranked`` but excludes any
@@ -359,7 +366,10 @@ def webex_attention_filtered(limit: int = 30) -> list[dict[str, Any]]:
     try:
         muted_ids = webex_store.list_muted_space_ids(conn)
         rows = [
-            row for row in list_messages(conn) if row.get("space_id") not in muted_ids
+            row
+            for row in list_messages(conn)
+            if row.get("space_id") not in muted_ids
+            and (include_handled or row.get("handled_at") is None)
         ]
         ranked = attention(rows)[: max(1, min(limit, 50))]
     finally:

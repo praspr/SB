@@ -27,6 +27,16 @@ def replace_mirror(
                 "SELECT id FROM sb_webex_spaces WHERE muted = 1"
             ).fetchall()
         }
+        handled_by_id = {
+            row["id"]: {
+                "handled_at": row["handled_at"],
+                "handled_action": row["handled_action"],
+            }
+            for row in conn.execute(
+                "SELECT id, handled_at, handled_action FROM sb_webex_messages "
+                "WHERE handled_at IS NOT NULL OR handled_action IS NOT NULL"
+            ).fetchall()
+        }
         conn.execute("DELETE FROM sb_webex_meetings")
         conn.execute("DELETE FROM sb_webex_spaces")
         conn.execute("DELETE FROM sb_webex_messages")
@@ -73,8 +83,9 @@ def replace_mirror(
                 INSERT INTO sb_webex_messages
                   (id, space_id, space_name, sender_name, sender_email, is_dm,
                    is_mention, is_unread, preview, occurred_at, deep_link, synced_at,
-                   parent_message_id, parent_sender_email, is_reply_to_me)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   parent_message_id, parent_sender_email, is_reply_to_me,
+                   handled_at, handled_action)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     message["id"],
@@ -92,7 +103,9 @@ def replace_mirror(
                     message.get("parent_message_id") or None,
                     message.get("parent_sender_email") or None,
                     int(bool(message.get("is_reply_to_me"))),
-                ),
+                    handled_by_id.get(message["id"], {}).get("handled_at"),
+                    handled_by_id.get(message["id"], {}).get("handled_action"),
+                )
             )
     except Exception:
         conn.rollback()
@@ -103,6 +116,22 @@ def replace_mirror(
         "spaces": len(spaces),
         "messages": min(len(messages), 200),
     }
+
+
+def set_message_handled(conn: sqlite3.Connection, message_id: str, action: str) -> None:
+    conn.execute(
+        "UPDATE sb_webex_messages SET handled_at = ?, handled_action = ? WHERE id = ?",
+        (_now(), action, message_id),
+    )
+    conn.commit()
+
+
+def clear_message_handled(conn: sqlite3.Connection, message_id: str) -> None:
+    conn.execute(
+        "UPDATE sb_webex_messages SET handled_at = NULL, handled_action = NULL WHERE id = ?",
+        (message_id,),
+    )
+    conn.commit()
 
 
 def list_meetings(conn: sqlite3.Connection) -> list[dict]:
