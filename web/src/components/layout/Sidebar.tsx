@@ -6,18 +6,33 @@ import { webexAttentionRanked } from '@/lib/triage'
 import { useUiStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
-const navItems = [
-  { to: '/attention', label: 'Attention', icon: Inbox, end: false },
-  { to: '/goals', label: 'Goals', icon: Target, end: false },
-  { to: '/reports', label: 'Reports', icon: FileText, end: false },
-  { to: '/ledger', label: 'Ledger', icon: BookOpen, end: false },
-  { to: '/proposals', label: 'Proposals', icon: Inbox, end: false },
-  { to: '/jira', label: 'JIRAs', icon: Ticket, end: false },
-  { to: '/todos', label: 'Todos', icon: ListTodo, end: false },
-  { to: '/meetings', label: 'Meetings', icon: Calendar, end: false },
-  { to: '/webex', label: 'Webex', icon: MessageSquare, end: false },
-  { to: '/skills', label: 'Skills', icon: Library, end: false },
-  { to: '/signals', label: 'Signals', icon: Radio, end: false },
+const navGroups = [
+  {
+    label: 'DO NOW',
+    items: [
+      { to: '/attention', label: 'Attention', icon: Inbox, end: false },
+      { to: '/todos', label: 'Todos', icon: ListTodo, end: false },
+      { to: '/meetings', label: 'Meetings', icon: Calendar, end: false },
+      { to: '/jira', label: 'JIRAs', icon: Ticket, end: false },
+    ],
+  },
+  {
+    label: 'THINK',
+    items: [
+      { to: '/goals', label: 'Goals', icon: Target, end: false },
+      { to: '/reports', label: 'Reports', icon: FileText, end: false },
+      { to: '/ledger', label: 'Ledger', icon: BookOpen, end: false },
+      { to: '/signals', label: 'Signals', icon: Radio, end: false },
+    ],
+  },
+  {
+    label: 'SYSTEM',
+    items: [
+      { to: '/proposals', label: 'Proposals', icon: Inbox, end: false },
+      { to: '/skills', label: 'Skills', icon: Library, end: false },
+      { to: '/webex', label: 'Webex', icon: MessageSquare, end: false },
+    ],
+  },
 ]
 
 export function Sidebar() {
@@ -69,33 +84,42 @@ export function Sidebar() {
         </button>
       </div>
 
-      <nav className="flex-1 space-y-1 px-2.5 py-4">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.end}
-            className={({ isActive }) =>
-              cn(
-                'flex items-center gap-3 rounded-lg px-2.5 py-2 text-13 font-medium text-text-secondary transition-colors duration-fast ease-out hover:bg-bg-elevated hover:text-text-primary',
-                isActive && 'bg-accent-500/15 text-text-primary border border-border-strong',
-                collapsed && 'justify-center px-0'
-              )
-            }
-           title={collapsed ? item.label : undefined}
-          >
-            <item.icon size={18} className="shrink-0" />
-            {!collapsed && (
-              <>
-                <span>{item.label}</span>
-                {item.to === '/attention' && unreadCount > 0 ? (
-                  <span className="ml-auto rounded-full border border-border-subtle bg-black/20 px-2 py-0.5 text-12 tabular text-text-secondary">
-                    {unreadCount}
-                  </span>
-                ) : null}
-              </>
-            )}
-          </NavLink>
+      <nav className="flex-1 px-2.5 py-4">
+        {navGroups.map((group, groupIndex) => (
+          <div key={group.label} className={cn(groupIndex > 0 && 'mt-4 border-t border-border-subtle pt-4')}>
+            {!collapsed ? (
+              <div className="px-2.5 pb-2 text-11 uppercase tracking-[0.18em] text-text-muted">{group.label}</div>
+            ) : null}
+            <div className="space-y-1">
+              {group.items.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-3 rounded-lg px-2.5 py-2 text-13 font-medium text-text-secondary transition-colors duration-fast ease-out hover:bg-bg-elevated hover:text-text-primary',
+                      isActive && 'border border-border-strong bg-accent-500/15 text-text-primary',
+                      collapsed && 'justify-center px-0'
+                    )
+                  }
+                  title={collapsed ? item.label : undefined}
+                >
+                  <item.icon size={18} className="shrink-0" />
+                  {!collapsed && (
+                    <>
+                      <span>{item.label}</span>
+                      {item.to === '/attention' && unreadCount > 0 ? (
+                        <span className="ml-auto rounded-full border border-border-subtle bg-black/20 px-2 py-0.5 text-12 tabular text-text-secondary">
+                          {unreadCount}
+                        </span>
+                      ) : null}
+                    </>
+                  )}
+                </NavLink>
+              ))}
+            </div>
+          </div>
         ))}
       </nav>
 
