@@ -9,6 +9,7 @@ import { ledgerProjects, ledgerRegisterProject, ledgerSessions } from '@/lib/led
 import { addScheduledRitual, deleteScheduledRitual, listScheduledRituals } from '@/lib/schedules'
 import { SETTING_CHECKS, type CheckResult } from '@/lib/settings-checks'
 import { fetchCoreStatus } from '@/lib/status'
+import { useUiStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { SchedulesTab, RITUAL_OPTIONS } from '@/components/layout/SchedulesTab'
 
@@ -18,6 +19,8 @@ type SettingsPopoverProps = {
 
 export function SettingsPopover({ children }: SettingsPopoverProps) {
   const queryClient = useQueryClient()
+  const open = useUiStore((s) => s.settingsOpen)
+  const setOpen = useUiStore((s) => s.setSettingsOpen)
   const [refreshedAt, setRefreshedAt] = useState<Date | null>(null)
   const [tab, setTab] = useState('connections')
   const [projectName, setProjectName] = useState('')
@@ -101,7 +104,7 @@ export function SettingsPopover({ children }: SettingsPopoverProps) {
   const isRefreshing = checks.some((query) => query.isFetching) || coreStatusQuery.isFetching
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
       <PopoverContent
         side="right"

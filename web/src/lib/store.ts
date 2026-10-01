@@ -13,6 +13,8 @@ type UiState = {
   sidebarCollapsed: boolean
   toggleSidebar: () => void
   setSidebarCollapsed: (collapsed: boolean) => void
+  settingsOpen: boolean
+  setSettingsOpen: (open: boolean) => void
   commandPaletteOpen: boolean
   setCommandPaletteOpen: (open: boolean) => void
   addTodoOpen: boolean
@@ -27,6 +29,8 @@ export const useUiStore = create<UiState>((set) => ({
   sidebarCollapsed: false,
   toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
   setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
+  settingsOpen: false,
+  setSettingsOpen: (open) => set({ settingsOpen: open }),
   commandPaletteOpen: false,
   setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
   addTodoOpen: false,

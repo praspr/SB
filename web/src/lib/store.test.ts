@@ -3,7 +3,7 @@ import { useUiStore } from './store'
 
 describe('todo draft store', () => {
   beforeEach(() => {
-    useUiStore.setState({ addTodoOpen: false, todoDraft: null })
+    useUiStore.setState({ addTodoOpen: false, todoDraft: null, settingsOpen: false })
   })
 
   it('opens the todo dialog with source context', () => {
@@ -17,5 +17,10 @@ describe('todo draft store', () => {
     useUiStore.getState().openAddTodo(draft)
     expect(useUiStore.getState().addTodoOpen).toBe(true)
     expect(useUiStore.getState().todoDraft).toEqual(draft)
+  })
+
+  it('opens settings from the shared UI store', () => {
+    useUiStore.getState().setSettingsOpen(true)
+    expect(useUiStore.getState().settingsOpen).toBe(true)
   })
 })

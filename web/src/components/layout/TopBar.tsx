@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { UsageStats } from '@/components/landing/UsageStats'
+import { SyncFreshness } from '@/components/shell/SyncFreshness'
 import { formatSystemClock } from '@/lib/system-clock'
 
 export function TopBar({ title, subtitle, now }: { title?: string; subtitle?: string; now?: Date }) {
@@ -21,7 +22,8 @@ export function TopBar({ title, subtitle, now }: { title?: string; subtitle?: st
         <time dateTime={clock.toISOString()} className="justify-self-center text-center text-13 tabular text-text-secondary">
           {formatSystemClock(now ?? clock)}
         </time>
-        <div className="flex justify-end">
+        <div className="flex items-center justify-end gap-2">
+          <SyncFreshness now={now ?? clock} />
           <UsageStats compact />
         </div>
       </div>

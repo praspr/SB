@@ -6,14 +6,19 @@ vi.mock('@/components/landing/UsageStats', () => ({
   UsageStats: () => <div>Usage metrics</div>,
 }))
 
+vi.mock('@/components/shell/SyncFreshness', () => ({
+  SyncFreshness: () => <div>12m since sync</div>,
+}))
+
 describe('top bar', () => {
-  it('shows the system clock and AI usage beside the page actions', () => {
+  it('shows the system clock, sync freshness, and AI usage beside the page actions', () => {
     const html = renderToStaticMarkup(
       <TopBar title="JIRAs" subtitle="Assigned tickets across your projects" now={new Date(2026, 9, 1, 0, 24)} />,
     )
 
     expect(html).toContain('justify-self-center')
     expect(html).toContain('Thursday, October 1 · 12:24 AM')
+    expect(html).toContain('12m since sync')
     expect(html).toContain('Usage metrics')
     expect(html).toContain('JIRAs')
     expect(html).toContain('Assigned tickets across your projects')
