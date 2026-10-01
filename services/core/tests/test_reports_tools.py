@@ -18,7 +18,13 @@ def _patch_conn(monkeypatch, db_path: Path) -> None:
 def test_all_four_tools_are_registered() -> None:
     tools = asyncio.run(rt.mcp.list_tools())
     names = {t.name for t in tools}
-    assert {"report_daily", "report_weekly", "report_monthly", "report_query"} <= names
+    assert {
+        "report_daily",
+        "report_weekly",
+        "report_monthly",
+        "report_query",
+        "report_perf_checkin",
+    } <= names
 
 
 def test_reports_tools_are_mounted_on_parent_mcp() -> None:
@@ -146,3 +152,49 @@ def test_report_query_with_project_filter(tmp_path, monkeypatch) -> None:
     result = rt.report_query(q="widgets", project="sb")
     assert "sb thing about widgets" in result["markdown"]
     assert "ciq thing about widgets" not in result["markdown"]
+
+
+# ---------------------------------------------------------------------------
+# report_perf_checkin
+# ---------------------------------------------------------------------------
+
+
+def test_report_perf_checkin_calls_perf_checkin_with_validated_args(monkeypatch) -> None:
+    captured = {}
+
+    def _fake_perf_checkin(*, shape, voice):
+        captured["shape"] = shape
+        captured["voice"] = voice
+        return {"markdown": "ok", "citations": [], "range": {}, "shape": shape, "voice": voice}
+
+    monkeypatch.setattr(rt, "_perf_checkin", _fake_perf_checkin)
+
+    result = rt.report_perf_checkin(shape="one-improvement", voice="third-person")
+    assert captured == {"shape": "one-improvement", "voice": "third-person"}
+    assert result["markdown"] == "ok"
+
+
+def test_report_perf_checkin_defaults_to_full_first_person(monkeypatch) -> None:
+    captured = {}
+
+    def _fake_perf_checkin(*, shape, voice):
+        captured["shape"] = shape
+        captured["voice"] = voice
+        return {"markdown": "ok"}
+
+    monkeypatch.setattr(rt, "_perf_checkin", _fake_perf_checkin)
+
+    rt.report_perf_checkin()
+    assert captured == {"shape": "full", "voice": "first-person"}
+
+
+def test_report_perf_checkin_rejects_bad_shape() -> None:
+    result = rt.report_perf_checkin(shape="partial")
+    assert "error" in result
+    assert "shape" in result["error"]
+
+
+def test_report_perf_checkin_rejects_bad_voice() -> None:
+    result = rt.report_perf_checkin(voice="robot")
+    assert "error" in result
+    assert "voice" in result["error"]

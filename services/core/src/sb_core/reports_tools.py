@@ -17,6 +17,7 @@ from typing import Optional
 from fastmcp import FastMCP
 
 from .reports import templates
+from .reports.perf_checkin import perf_checkin as _perf_checkin
 
 mcp = FastMCP(
     "sb-reports",
@@ -111,3 +112,22 @@ def report_query(
         return templates.query(conn, q=q, project=project, since=since, until=until)
     finally:
         conn.close()
+
+
+@mcp.tool()
+def report_perf_checkin(shape: str = "full", voice: str = "first-person") -> dict:
+    """Draft a Cisco weekly check-in from ciq CHANGELOG for the previous week.
+
+    Evidence is read exclusively from ``~/Documents/code_home/ciq/CHANGELOG.md``
+    (override via ``SB_PERF_CHECKIN_CHANGELOG_PATH``) -- never sb's own
+    ledger or CHANGELOG.md. Applies the cisco-iq-performance-checkin skill's
+    rules via LLM narration, with a deterministic evidence dump as fallback.
+
+    shape: 'full' (default) or 'one-improvement'.
+    voice: 'first-person' (default) or 'third-person'.
+    """
+    if shape not in ("full", "one-improvement"):
+        return {"error": f"shape must be 'full' or 'one-improvement'; got {shape!r}"}
+    if voice not in ("first-person", "third-person"):
+        return {"error": f"voice must be 'first-person' or 'third-person'; got {voice!r}"}
+    return _perf_checkin(shape=shape, voice=voice)
