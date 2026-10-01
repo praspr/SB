@@ -19,7 +19,7 @@ def test_migrations_create_tables():
     assert "schema_migrations" in tables
 
     versions = {row[0] for row in conn.execute("SELECT version FROM schema_migrations")}
-    assert versions == {1, 2}
+    assert versions == {1, 2, 3}
     conn.close()
 
 
@@ -29,7 +29,7 @@ def test_migrations_idempotent():
     run_migrations(conn)  # should not raise or duplicate
 
     versions = conn.execute("SELECT version FROM schema_migrations").fetchall()
-    assert len(versions) == 2
+    assert len(versions) == 3
     conn.close()
 
 
@@ -42,6 +42,7 @@ def test_todos_table_columns(conn):
         "priority",
         "due_date",
         "due_time",
+        "remind_before_minutes",
         "is_completed",
         "completed_at",
         "tags",

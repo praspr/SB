@@ -19,6 +19,7 @@ class Todo(BaseModel):
     priority: int = 4
     due_date: str | None = None
     due_time: str | None = None
+    remind_before_minutes: int | None = None
     is_completed: bool = False
     completed_at: str | None = None
     tags: list[str] = []
@@ -39,6 +40,7 @@ class TodoCreate(BaseModel):
     priority: int = Field(default=4, ge=1, le=4)
     due_date: str | None = None
     due_time: str | None = None
+    remind_before_minutes: int | None = Field(default=None, ge=0)
     tags: list[str] = []
     external_source: str | None = None
     external_ref: str | None = None
@@ -55,6 +57,7 @@ class TodoUpdate(BaseModel):
     priority: int | None = Field(default=None, ge=1, le=4)
     due_date: str | None = None
     due_time: str | None = None
+    remind_before_minutes: int | None = Field(default=None, ge=0)
     tags: list[str] | None = None
     domain: str | None = None
     goal_id: int | None = None

@@ -32,6 +32,7 @@ def _row_to_todo(row: sqlite3.Row) -> Todo:
         priority=data["priority"],
         due_date=data.get("due_date"),
         due_time=data.get("due_time"),
+        remind_before_minutes=data.get("remind_before_minutes"),
         is_completed=bool(data.get("is_completed")),
         completed_at=data.get("completed_at"),
         tags=tags,
@@ -121,7 +122,7 @@ def add_todo(conn: sqlite3.Connection, data: TodoCreate) -> Todo:
                 """
                 UPDATE todos SET
                   title = ?, description = ?, priority = ?, due_date = ?,
-                  due_time = ?, tags = ?, domain = ?, goal_id = ?, jira_ref = ?,
+                  due_time = ?, remind_before_minutes = ?, tags = ?, domain = ?, goal_id = ?, jira_ref = ?,
                   recurrence_rule = ?, parent_todo_id = ?, updated_at = ?
                 WHERE id = ?
                 """,
@@ -131,6 +132,7 @@ def add_todo(conn: sqlite3.Connection, data: TodoCreate) -> Todo:
                     data.priority,
                     data.due_date,
                     data.due_time,
+                    data.remind_before_minutes,
                     tags_json,
                     data.domain,
                     data.goal_id,
@@ -147,10 +149,10 @@ def add_todo(conn: sqlite3.Connection, data: TodoCreate) -> Todo:
     cursor = conn.execute(
         """
         INSERT INTO todos (
-          title, description, priority, due_date, due_time, tags,
+          title, description, priority, due_date, due_time, remind_before_minutes, tags,
           external_source, external_ref, domain, goal_id, jira_ref,
           recurrence_rule, parent_todo_id, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             data.title,
@@ -158,6 +160,7 @@ def add_todo(conn: sqlite3.Connection, data: TodoCreate) -> Todo:
             data.priority,
             data.due_date,
             data.due_time,
+            data.remind_before_minutes,
             tags_json,
             data.external_source,
             data.external_ref,
@@ -358,6 +361,7 @@ def expand_recurring_todo(conn: sqlite3.Connection, todo_id: int) -> Todo | None
         priority=template.priority,
         due_date=next_due,
         due_time=template.due_time,
+        remind_before_minutes=template.remind_before_minutes,
         tags=template.tags,
         domain=template.domain,
         goal_id=template.goal_id,

@@ -94,6 +94,32 @@ def test_update_todo_not_found(conn):
         handlers.update_todo(conn, 12345, TodoUpdate(title="x"))
 
 
+def test_due_time_and_reminder_round_trip(conn):
+    created = handlers.add_todo(
+        conn,
+        TodoCreate(
+            title="Prep release note",
+            due_date="2026-10-02",
+            due_time="15:30",
+            remind_before_minutes=20,
+        ),
+    )
+
+    assert created.due_date == "2026-10-02"
+    assert created.due_time == "15:30"
+    assert created.remind_before_minutes == 20
+
+    updated = handlers.update_todo(
+        conn,
+        created.id,
+        TodoUpdate(due_time=None, remind_before_minutes=None),
+    )
+
+    assert updated.due_date == "2026-10-02"
+    assert updated.due_time is None
+    assert updated.remind_before_minutes is None
+
+
 def test_delete_todo(conn):
     todo = handlers.add_todo(conn, TodoCreate(title="Temp"))
     assert handlers.delete_todo(conn, todo.id) is True
