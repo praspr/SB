@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { History, Play } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ledgerLog, ledgerProjects, ledgerSearch } from '@/lib/ledger'
 import { reportDaily, reportMonthly, reportQuery, reportWeekly, type ReportResult } from '@/lib/reports'
 import { reportStandup, reportToday, reportWrap } from '@/lib/triage'
@@ -20,6 +21,15 @@ type RecentRun = {
   project: string
   label: string
   at: string
+}
+
+type ReportsTab = 'rituals' | 'reports'
+
+const RITUAL_TEMPLATES: ReportTemplate[] = ['today', 'wrap', 'standup', 'daily']
+const REPORT_TEMPLATES: ReportTemplate[] = ['daily', 'weekly', 'monthly', 'query']
+
+function tabForTemplate(template: ReportTemplate): ReportsTab {
+  return template === 'today' || template === 'wrap' || template === 'standup' ? 'rituals' : 'reports'
 }
 
 type ReportsViewProps = {
@@ -44,6 +54,8 @@ type ReportsViewProps = {
   error?: string
   recentRuns: RecentRun[]
   savePending?: boolean
+  activeTab: ReportsTab
+  onTabChange: (value: ReportsTab) => void
   onRun: () => void
   onCopy: () => void
   onSave: () => void
@@ -88,6 +100,8 @@ export function ReportsView({
   error,
   recentRuns,
   savePending,
+  activeTab,
+  onTabChange,
   onRun,
   onCopy,
   onSave,
@@ -104,23 +118,52 @@ export function ReportsView({
       <section className="rounded-xl border border-border-subtle bg-bg-panel/92 p-5">
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
           <div className="space-y-4">
-            <div className="flex flex-wrap gap-2">
-              {(['today', 'wrap', 'standup', 'daily', 'weekly', 'monthly', 'query'] as ReportTemplate[]).map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => onTemplate(value)}
-                  className={cn(
-                    'rounded-lg border px-3 py-2 text-13 capitalize transition-colors duration-fast ease-out',
-                    template === value
-                      ? 'border-border-strong bg-accent-500/15 text-text-primary'
-                      : 'border-border-subtle bg-black/20 text-text-secondary hover:border-border-strong hover:text-text-primary'
-                  )}
-                >
-                  {value}
-                </button>
-              ))}
-            </div>
+            <Tabs value={activeTab} onValueChange={(value) => onTabChange(value as ReportsTab)}>
+              <TabsList className="grid grid-cols-2">
+                <TabsTrigger value="rituals">Rituals</TabsTrigger>
+                <TabsTrigger value="reports">Reports</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="rituals" className="mt-4">
+                <div className="flex flex-wrap gap-2">
+                  {RITUAL_TEMPLATES.map((value) => (
+                    <button
+                      key={`${value}-ritual`}
+                      type="button"
+                      onClick={() => onTemplate(value)}
+                      className={cn(
+                        'rounded-lg border px-3 py-2 text-13 transition-colors duration-fast ease-out',
+                        template === value
+                          ? 'border-border-strong bg-accent-500/15 text-text-primary'
+                          : 'border-border-subtle bg-black/20 text-text-secondary hover:border-border-strong hover:text-text-primary'
+                      )}
+                    >
+                      {value === 'daily' ? 'Brief' : value}
+                    </button>
+                  ))}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="reports" className="mt-4">
+                <div className="flex flex-wrap gap-2">
+                  {REPORT_TEMPLATES.map((value) => (
+                    <button
+                      key={`${value}-report`}
+                      type="button"
+                      onClick={() => onTemplate(value)}
+                      className={cn(
+                        'rounded-lg border px-3 py-2 text-13 capitalize transition-colors duration-fast ease-out',
+                        template === value
+                          ? 'border-border-strong bg-accent-500/15 text-text-primary'
+                          : 'border-border-subtle bg-black/20 text-text-secondary hover:border-border-strong hover:text-text-primary'
+                      )}
+                    >
+                      {value}
+                    </button>
+                  ))}
+                </div>
+              </TabsContent>
+            </Tabs>
 
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               <label className="space-y-1.5">
@@ -229,6 +272,7 @@ export function ReportsPage() {
   const initialTemplate: ReportTemplate =
     templateParam && VALID_TEMPLATES.includes(templateParam) ? templateParam : 'daily'
   const [template, setTemplate] = useState<ReportTemplate>(initialTemplate)
+  const [activeTab, setActiveTab] = useState<ReportsTab>(tabForTemplate(initialTemplate))
   const [project, setProject] = useState('')
   const [date, setDate] = useState(today)
   const [month, setMonth] = useState(today.slice(0, 7))
@@ -312,7 +356,10 @@ export function ReportsPage() {
   return (
     <ReportsView
       template={template}
-      onTemplate={setTemplate}
+      onTemplate={(value) => {
+        setTemplate(value)
+        setActiveTab(tabForTemplate(value))
+      }}
       project={project}
       onProject={setProject}
       date={date}
@@ -332,6 +379,8 @@ export function ReportsPage() {
       error={viewerError}
       recentRuns={recentRuns}
       savePending={saveNote.isPending}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
       onRun={() => runReport.mutate()}
       onCopy={() => {
         if (report?.markdown && navigator.clipboard) void navigator.clipboard.writeText(report.markdown)

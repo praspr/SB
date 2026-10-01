@@ -34,6 +34,8 @@ describe('reports page', () => {
           onQuery={() => undefined}
           projects={[]}
           recentRuns={[]}
+          activeTab="rituals"
+          onTabChange={() => undefined}
           onRun={() => undefined}
           onCopy={() => undefined}
           onSave={() => undefined}
@@ -41,6 +43,8 @@ describe('reports page', () => {
       )
     )
     expect(html).toContain('Reports')
+    expect(html).toContain('Rituals')
+    expect(html).toContain('Brief')
     expect(html).toContain('Pick a template and hit Run.')
     expect(html).toContain('Recent runs')
     expect(html).toContain('today')
@@ -82,6 +86,8 @@ describe('reports page', () => {
             },
           ]}
           recentRuns={[{ template: 'query', project: 'sb', label: 'release', at: '9/30/2026, 10:00 AM' }]}
+          activeTab="reports"
+          onTabChange={() => undefined}
           onRun={() => undefined}
           onCopy={() => undefined}
           onSave={() => undefined}
@@ -89,6 +95,7 @@ describe('reports page', () => {
       )
     )
     expect(html).toContain('Copy markdown')
+    expect(html).toContain('Reports')
     expect(html).toContain('Save as ledger note')
     expect(html).toContain('Referenced ledger entries')
     expect(html).toContain('ledger:12')
