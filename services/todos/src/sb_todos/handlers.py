@@ -12,6 +12,7 @@ import re
 import sqlite3
 from datetime import date, datetime, timedelta, timezone
 
+from . import ledger_bridge
 from .models import Todo, TodoCreate, TodoUpdate
 
 _WEEKDAY_CODES = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"]
@@ -105,6 +106,13 @@ def get_todo(conn: sqlite3.Connection, todo_id: int) -> Todo | None:
     return _row_to_todo(row) if row else None
 
 
+def _todo_refs(todo: Todo) -> list[dict]:
+    refs = [{"kind": "todo", "value": str(todo.id)}]
+    if todo.jira_ref:
+        refs.append({"kind": "jira", "value": todo.jira_ref})
+    return refs
+
+
 def add_todo(conn: sqlite3.Connection, data: TodoCreate) -> Todo:
     """Create a new todo. If external_source/external_ref are provided and
     already exist, update that row instead (idempotent upsert)."""
@@ -144,6 +152,8 @@ def add_todo(conn: sqlite3.Connection, data: TodoCreate) -> Todo:
                 ),
             )
             conn.commit()
+            # Idempotent upsert of an existing external row: no-op for the
+            # ledger (decision #5 in phase 2g design).
             return get_todo(conn, todo_id)  # type: ignore[return-value]
 
     cursor = conn.execute(
@@ -175,7 +185,14 @@ def add_todo(conn: sqlite3.Connection, data: TodoCreate) -> Todo:
     )
     conn.commit()
     todo_id = cursor.lastrowid
-    return get_todo(conn, todo_id)  # type: ignore[return-value]
+    created: Todo = get_todo(conn, todo_id)  # type: ignore[assignment]
+    ledger_bridge.record(
+        "Added",
+        f'Added todo "{created.title}"',
+        None,
+        _todo_refs(created),
+    )
+    return created
 
 
 def complete_todo(conn: sqlite3.Connection, todo_id: int) -> Todo:
@@ -195,7 +212,14 @@ def complete_todo(conn: sqlite3.Connection, todo_id: int) -> Todo:
     conn.commit()
     if existing.recurrence_rule:
         expand_recurring_todo(conn, todo_id)
-    return get_todo(conn, todo_id)  # type: ignore[return-value]
+    completed: Todo = get_todo(conn, todo_id)  # type: ignore[assignment]
+    ledger_bridge.record(
+        "Completed",
+        f'Completed todo "{completed.title}"',
+        None,
+        _todo_refs(completed),
+    )
+    return completed
 
 
 def uncomplete_todo(conn: sqlite3.Connection, todo_id: int) -> Todo:
@@ -208,12 +232,20 @@ def uncomplete_todo(conn: sqlite3.Connection, todo_id: int) -> Todo:
         (now, todo_id),
     )
     conn.commit()
-    return get_todo(conn, todo_id)  # type: ignore[return-value]
+    reopened: Todo = get_todo(conn, todo_id)  # type: ignore[assignment]
+    ledger_bridge.record(
+        "Reopened",
+        f'Reopened todo "{reopened.title}"',
+        None,
+        _todo_refs(reopened),
+    )
+    return reopened
 
 
 def update_todo(conn: sqlite3.Connection, todo_id: int, data: TodoUpdate) -> Todo:
     """Update only the fields provided in `data`."""
-    if get_todo(conn, todo_id) is None:
+    before = get_todo(conn, todo_id)
+    if before is None:
         raise ValueError(f"todo {todo_id} not found")
 
     fields: list[str] = []
@@ -236,14 +268,50 @@ def update_todo(conn: sqlite3.Connection, todo_id: int, data: TodoUpdate) -> Tod
         conn.execute(sql, params)
         conn.commit()
 
-    return get_todo(conn, todo_id)  # type: ignore[return-value]
+    after: Todo = get_todo(conn, todo_id)  # type: ignore[assignment]
+    if fields:
+        diff = _diff_summary(before, updates)
+        ledger_bridge.record(
+            "Updated",
+            f'Updated todo "{after.title}"',
+            diff,
+            _todo_refs(after),
+        )
+    return after
+
+
+def _diff_summary(before: Todo, updates: dict) -> str:
+    """Build a short human-readable diff like
+    ``priority 2 -> 1; added due_date 2026-10-05``."""
+    parts: list[str] = []
+    before_data = before.model_dump()
+    for key, new_value in updates.items():
+        old_value = before_data.get(key)
+        if old_value == new_value:
+            continue
+        if old_value in (None, "", []) and new_value not in (None, "", []):
+            parts.append(f"added {key} {new_value!s}")
+        elif new_value in (None, "", []) and old_value not in (None, "", []):
+            parts.append(f"removed {key} (was {old_value!s})")
+        else:
+            parts.append(f"{key} {old_value!s} \u2192 {new_value!s}")
+    return "; ".join(parts) if parts else "no field changes"
 
 
 def delete_todo(conn: sqlite3.Connection, todo_id: int) -> bool:
     """Delete a todo by id. Returns True if a row was deleted."""
+    existing = get_todo(conn, todo_id)
     cursor = conn.execute("DELETE FROM todos WHERE id = ?", (todo_id,))
     conn.commit()
-    return cursor.rowcount > 0
+    deleted = cursor.rowcount > 0
+    if deleted and existing is not None:
+        ledger_bridge.record(
+            "Removed",
+            f'Removed todo "{existing.title}"',
+            None,
+            _todo_refs(existing),
+        )
+    return deleted
 
 
 def search_todos(conn: sqlite3.Connection, query: str, *, limit: int = 20) -> list[Todo]:
