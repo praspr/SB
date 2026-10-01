@@ -22,6 +22,9 @@ export function AddTodoDialog() {
   const [domain, setDomain] = useState<Task['domain']>('work')
   const [goalId, setGoalId] = useState('')
   const [jiraRef, setJiraRef] = useState('')
+  const [dueDate, setDueDate] = useState('')
+  const [dueTime, setDueTime] = useState('')
+  const [remindBeforeMinutes, setRemindBeforeMinutes] = useState('0')
   const [recurrencePreset, setRecurrencePreset] = useState('')
   const [customRrule, setCustomRrule] = useState('')
   const goals = useQuery({ queryKey: ['goals-v2', 'dialog'], queryFn: async () => listGoalsV2(), staleTime: 30_000, enabled: open })
@@ -36,6 +39,9 @@ export function AddTodoDialog() {
     setDomain(editing?.domain ?? 'work')
     setGoalId(editing?.goal_id ? String(editing.goal_id) : draft?.goal_id ? String(draft.goal_id) : '')
     setJiraRef(source?.jira_ref ?? '')
+    setDueDate(source?.due_date ?? '')
+    setDueTime(source?.due_time ?? '')
+    setRemindBeforeMinutes(String(source?.remind_before_minutes ?? 0))
     const recurrence = editing?.recurrence_rule ?? draft?.recurrence_rule ?? ''
     if (recurrence === 'FREQ=DAILY' || recurrence === 'FREQ=WEEKLY' || recurrence === 'FREQ=MONTHLY') {
       setRecurrencePreset(recurrence)
@@ -53,10 +59,20 @@ export function AddTodoDialog() {
     e.preventDefault()
     if (!title.trim()) return
     const recurrence_rule = recurrencePreset === 'custom' ? customRrule.trim() || undefined : recurrencePreset || undefined
+    const normalizedDueDate = dueDate || null
+    const normalizedDueTime = normalizedDueDate && dueTime ? dueTime : null
+    const rawRemind = Number(remindBeforeMinutes)
+    const normalizedRemindBeforeMinutes =
+      normalizedDueDate && normalizedDueTime
+        ? Math.min(1440, Math.max(0, Number.isFinite(rawRemind) ? rawRemind : 0))
+        : null
     const payload = {
       title: title.trim(),
       description: description.trim() || undefined,
       priority,
+      due_date: normalizedDueDate,
+      due_time: normalizedDueTime,
+      remind_before_minutes: normalizedRemindBeforeMinutes,
       domain,
       goal_id: goalId ? Number(goalId) : null,
       jira_ref: jiraRef.trim() || null,
@@ -66,6 +82,9 @@ export function AddTodoDialog() {
       ? updateTask.mutateAsync({ taskId: editing.id, patch: payload })
       : createRichTask({
           ...payload,
+          due_date: normalizedDueDate ?? undefined,
+          due_time: normalizedDueTime ?? undefined,
+          remind_before_minutes: normalizedRemindBeforeMinutes ?? undefined,
           goal_id: goalId ? Number(goalId) : undefined,
           jira_ref: jiraRef.trim() || undefined,
           recurrence_rule,
@@ -78,6 +97,9 @@ export function AddTodoDialog() {
     setTitle('')
     setDescription('')
     setPriority(2)
+    setDueDate('')
+    setDueTime('')
+    setRemindBeforeMinutes('0')
     setDomain('work')
     setGoalId('')
     setJiraRef('')
@@ -153,6 +175,65 @@ export function AddTodoDialog() {
                 </datalist>
               </>
             </div>
+          </div>
+          <div className="rounded-xl border border-border-subtle bg-black/20 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <label className="block text-12 uppercase tracking-[0.18em] text-text-muted">Due</label>
+                <div className="mt-1 text-12 text-text-secondary">Leave time empty for a date-only todo (no alert).</div>
+              </div>
+              {dueDate ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDueDate('')
+                    setDueTime('')
+                    setRemindBeforeMinutes('0')
+                  }}
+                  className="rounded-full border border-border-subtle px-2.5 py-1 text-12 text-text-muted transition-colors duration-fast ease-out hover:border-border-strong hover:text-text-primary"
+                >
+                  Clear
+                </button>
+              ) : null}
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <label>
+                <div className="mb-1 text-12 text-text-secondary">Date</div>
+                <input
+                  type="date"
+                  aria-label="Due date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  className="h-9 w-full rounded-md border border-border-subtle bg-bg-panel px-3 text-13 text-text-primary outline-none focus:border-accent-500"
+                />
+              </label>
+              {dueDate ? (
+                <label>
+                  <div className="mb-1 text-12 text-text-secondary">Time</div>
+                  <input
+                    type="time"
+                    aria-label="Due time"
+                    value={dueTime}
+                    onChange={(e) => setDueTime(e.target.value)}
+                    className="h-9 w-full rounded-md border border-border-subtle bg-bg-panel px-3 text-13 text-text-primary outline-none focus:border-accent-500"
+                  />
+                </label>
+              ) : null}
+            </div>
+            {dueDate && dueTime ? (
+              <label className="mt-3 block">
+                <div className="mb-1 text-12 text-text-secondary">Remind me N minutes before</div>
+                <input
+                  type="number"
+                  min={0}
+                  max={1440}
+                  aria-label="Remind me minutes before"
+                  value={remindBeforeMinutes}
+                  onChange={(e) => setRemindBeforeMinutes(e.target.value)}
+                  className="h-9 w-full rounded-md border border-border-subtle bg-bg-panel px-3 text-13 text-text-primary outline-none focus:border-accent-500"
+                />
+              </label>
+            ) : null}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>

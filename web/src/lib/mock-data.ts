@@ -7,6 +7,7 @@ export type Task = {
   priority: Priority
   due_date?: string // ISO YYYY-MM-DD
   due_time?: string // HH:MM (sb_due_time)
+  remind_before_minutes?: number | null
   is_completed: boolean
   domain: 'work' | 'learning' | 'personal'
   source: 'jira' | 'manual' | 'changelog'

@@ -12,6 +12,7 @@ describe('rich todo creation', () => {
       priority: 2,
       due_date: null,
       due_time: null,
+      remind_before_minutes: null,
       is_completed: false,
       domain: 'work',
       external_source: 'jira',
@@ -26,6 +27,9 @@ describe('rich todo creation', () => {
       description: 'Tracked from [JIRA:CXP-77]',
       priority: 2,
       domain: 'work',
+      due_date: '2026-10-03',
+      due_time: '15:30',
+      remind_before_minutes: 10,
       external_source: 'jira',
       external_ref: 'CXP-77',
       jira_ref: 'CXP-77',
@@ -37,6 +41,9 @@ describe('rich todo creation', () => {
         external_source: 'jira',
         external_ref: 'CXP-77',
         jira_ref: 'CXP-77',
+        due_date: '2026-10-03',
+        due_time: '15:30',
+        remind_before_minutes: 10,
       }),
     )
   })

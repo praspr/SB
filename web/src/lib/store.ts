@@ -5,6 +5,9 @@ export type TodoDraft = {
   title?: string
   description?: string
   priority?: 1 | 2 | 3 | 4
+  due_date?: string | null
+  due_time?: string | null
+  remind_before_minutes?: number | null
   external_source?: string
   external_ref?: string
   jira_ref?: string

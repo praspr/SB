@@ -32,6 +32,7 @@ type SbTodo = {
   priority: number
   due_date: string | null
   due_time: string | null
+  remind_before_minutes: number | null
   is_completed: boolean
   completed_at: string | null
   tags: string[]
@@ -55,6 +56,7 @@ function todoToTask(t: SbTodo): Task {
     priority,
     due_date: t.due_date ?? undefined,
     due_time: t.due_time ?? undefined,
+    remind_before_minutes: t.remind_before_minutes,
     is_completed: t.is_completed,
     domain,
     source: src,
@@ -81,6 +83,7 @@ export type TaskUpdateInput = {
   priority?: Task['priority']
   due_date?: string | null
   due_time?: string | null
+  remind_before_minutes?: number | null
   domain?: Task['domain']
   goal_id?: number | null
   jira_ref?: string | null

@@ -13,6 +13,7 @@ const sample = {
   priority: 2,
   due_date: null,
   due_time: null,
+  remind_before_minutes: null,
   is_completed: false,
   completed_at: null,
   tags: [],
