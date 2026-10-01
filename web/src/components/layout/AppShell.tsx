@@ -1,12 +1,14 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { useUiStore } from '@/lib/store'
-import { CommandPalette } from '@/components/palette/CommandPalette'
+import { SkeletonRow } from '@/components/shared/SkeletonRow'
 import { ToastPortal } from '@/components/shell/ToastPortal'
 import { AddTodoDialog } from '@/components/tasks/AddTodoDialog'
+
+const CommandPalette = lazy(() => import('@/components/palette/CommandPalette').then((module) => ({ default: module.CommandPalette })))
 
 const titles: Record<string, { title: string; subtitle?: string }> = {
   '/': { title: 'Today', subtitle: 'Your todos, meetings, and quick actions' },
@@ -24,8 +26,14 @@ export function AppShell() {
   const navigate = useNavigate()
   const outlet = useOutlet()
   const setSidebarCollapsed = useUiStore((s) => s.setSidebarCollapsed)
+  const commandPaletteOpen = useUiStore((s) => s.commandPaletteOpen)
   const setCommandPaletteOpen = useUiStore((s) => s.setCommandPaletteOpen)
   const triggerFocusQuickAdd = useUiStore((s) => s.triggerFocusQuickAdd)
+  const [commandPaletteLoaded, setCommandPaletteLoaded] = useState(false)
+
+  useEffect(() => {
+    if (commandPaletteOpen) setCommandPaletteLoaded(true)
+  }, [commandPaletteOpen])
 
   useEffect(() => {
     function onResize() {
@@ -75,7 +83,11 @@ export function AppShell() {
         </div>
       </main>
       <ToastPortal />
-      <CommandPalette />
+      {commandPaletteLoaded ? (
+        <Suspense fallback={<SkeletonRow lines={4} />}>
+          <CommandPalette />
+        </Suspense>
+      ) : null}
       <AddTodoDialog />
     </div>
   )
