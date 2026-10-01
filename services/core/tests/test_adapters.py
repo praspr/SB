@@ -211,6 +211,90 @@ def test_todos_adapter_is_idempotent(tmp_path: Path) -> None:
     assert len(signals) == 1
 
 
+def test_todos_adapter_promotes_completed_todo_to_ledger(tmp_path: Path) -> None:
+    from sb_core.store.ledger import search_ledger
+
+    todos_conn = _make_todos_conn()
+    todos_conn.execute(
+        "INSERT INTO todos (title, description, priority, tags, domain, is_completed, "
+        "completed_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            "Backup promoted task",
+            "",
+            2,
+            "[]",
+            "work",
+            1,
+            "2026-01-02 10:00:00",
+            "2026-01-01 00:00:00",
+            "2026-01-02 10:00:00",
+        ),
+    )
+    todos_conn.commit()
+
+    core_conn = connect(tmp_path / "core.db")
+    from sb_core.adapters.todos import run
+
+    run(core_conn, todos_conn=todos_conn)
+
+    entries = search_ledger(core_conn, project="sb", verb="Completed")
+    assert len(entries) == 1
+    assert "Backup promoted task" in entries[0]["summary"]
+    refs = entries[0]["refs"]
+    assert any(r.get("kind") == "todo" for r in refs)
+
+
+def test_todos_adapter_ledger_promotion_is_idempotent(tmp_path: Path) -> None:
+    from sb_core.store.ledger import search_ledger
+
+    todos_conn = _make_todos_conn()
+    todos_conn.execute(
+        "INSERT INTO todos (title, description, priority, tags, domain, is_completed, "
+        "completed_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            "Twice completed task",
+            "",
+            2,
+            "[]",
+            "work",
+            1,
+            "2026-01-02 10:00:00",
+            "2026-01-01 00:00:00",
+            "2026-01-02 10:00:00",
+        ),
+    )
+    todos_conn.commit()
+
+    core_conn = connect(tmp_path / "core.db")
+    from sb_core.adapters.todos import run
+
+    run(core_conn, todos_conn=todos_conn)
+    run(core_conn, todos_conn=todos_conn)
+
+    entries = search_ledger(core_conn, project="sb", verb="Completed")
+    assert len(entries) == 1
+
+
+def test_todos_adapter_does_not_promote_open_todos(tmp_path: Path) -> None:
+    from sb_core.store.ledger import search_ledger
+
+    todos_conn = _make_todos_conn()
+    todos_conn.execute(
+        "INSERT INTO todos (title, description, priority, tags, domain, created_at, updated_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        ("Still open task", "", 2, "[]", "work", "2026-01-01 00:00:00", "2026-01-01 00:00:00"),
+    )
+    todos_conn.commit()
+
+    core_conn = connect(tmp_path / "core.db")
+    from sb_core.adapters.todos import run
+
+    run(core_conn, todos_conn=todos_conn)
+
+    entries = search_ledger(core_conn, project="sb")
+    assert entries == []
+
+
 # ---------------------------------------------------------------------------
 # JIRA adapter
 # ---------------------------------------------------------------------------
