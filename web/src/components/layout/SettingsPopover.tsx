@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, Loader2, RefreshCw, X } from 'lucide-react'
+import { Check, ChevronDown, Loader2, RefreshCw, X } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -15,9 +15,10 @@ import { SchedulesTab, RITUAL_OPTIONS } from '@/components/layout/SchedulesTab'
 
 type SettingsPopoverProps = {
   children: ReactNode
+  defaultMoreOpen?: boolean
 }
 
-export function SettingsPopover({ children }: SettingsPopoverProps) {
+export function SettingsPopover({ children, defaultMoreOpen = false }: SettingsPopoverProps) {
   const queryClient = useQueryClient()
   const open = useUiStore((s) => s.settingsOpen)
   const setOpen = useUiStore((s) => s.setSettingsOpen)
@@ -31,6 +32,7 @@ export function SettingsPopover({ children }: SettingsPopoverProps) {
   const [scheduleRitual, setScheduleRitual] = useState(RITUAL_OPTIONS[0])
   const [scheduleCron, setScheduleCron] = useState('')
   const [scheduleEnabled, setScheduleEnabled] = useState(true)
+  const [moreOpen, setMoreOpen] = useState(defaultMoreOpen)
 
   const checks = useQueries({
     queries: SETTING_CHECKS.map((check) => ({
@@ -130,13 +132,28 @@ export function SettingsPopover({ children }: SettingsPopoverProps) {
           </div>
 
           <Tabs value={tab} onValueChange={(value) => setTab(value as 'connections' | 'schedules' | 'projects' | 'sessions' | 'diagnostics')}>
-            <TabsList className="grid grid-cols-5 gap-1">
+            <TabsList className="grid grid-cols-3 gap-1 sm:grid-cols-4">
               <TabsTrigger value="connections">Connections</TabsTrigger>
-              <TabsTrigger value="diagnostics">Diagnostics</TabsTrigger>
-              <TabsTrigger value="projects">Projects</TabsTrigger>
-              <TabsTrigger value="sessions">Sessions</TabsTrigger>
               <TabsTrigger value="schedules">Schedules</TabsTrigger>
+              <TabsTrigger value="projects">Projects</TabsTrigger>
+              <button
+                type="button"
+                onClick={() => setMoreOpen((open) => !open)}
+                className="inline-flex items-center justify-center gap-1 rounded-md px-3 py-1.5 text-12 font-medium text-text-secondary transition-colors duration-fast ease-out hover:bg-bg-elevated hover:text-text-primary"
+                aria-expanded={moreOpen}
+                aria-controls="settings-more-tabs"
+              >
+                More
+                <ChevronDown size={14} className={cn('transition-transform duration-fast ease-out', moreOpen && 'rotate-180')} />
+              </button>
             </TabsList>
+
+            {moreOpen ? (
+              <div id="settings-more-tabs" className="mt-2 flex gap-1 rounded-lg border border-border-subtle bg-black/20 p-1">
+                <TabsTrigger value="sessions" className="flex-1">Sessions</TabsTrigger>
+                <TabsTrigger value="diagnostics" className="flex-1">Diagnostics</TabsTrigger>
+              </div>
+            ) : null}
 
             <TabsContent value="connections" className="space-y-2.5">
               <div className="text-12 uppercase tracking-[0.18em] text-text-muted">Connections</div>
