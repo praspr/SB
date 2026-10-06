@@ -4,6 +4,7 @@ import path from 'node:path'
 import { getCursorCookie } from './vite/cursor-auth'
 
 export default defineConfig({
+  base: '/_ui/',
   plugins: [react()],
   resolve: {
     alias: {

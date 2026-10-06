@@ -19,23 +19,28 @@ function lazyRoute(element: ReactNode) {
   return <Suspense fallback={<SkeletonRow lines={4} />}>{element}</Suspense>
 }
 
-export const router = createBrowserRouter([
-  {
-    path: '/',
-    element: <AppShell />,
-    children: [
-      { index: true, element: <LandingPage /> },
-      { path: 'attention', element: <AttentionPage /> },
-      { path: 'goals', element: lazyRoute(<GoalsPage />) },
-      { path: 'reports', element: lazyRoute(<ReportsPage />) },
-      { path: 'ledger', element: lazyRoute(<LedgerPage />) },
-      { path: 'proposals', element: lazyRoute(<ProposalsPage />) },
-      { path: 'skills', element: <SkillsPage /> },
-      { path: 'signals', element: lazyRoute(<LedgerPage />) },
-      { path: 'todos', element: <TodosPage /> },
-      { path: 'jira', element: <JirasPage /> },
-      { path: 'meetings', element: <MeetingsPage /> },
-      { path: 'webex', element: <WebexPage /> },
-    ],
-  },
-])
+const basename = import.meta.env.BASE_URL.replace(/\/$/, '')
+
+export const router = createBrowserRouter(
+  [
+    {
+      path: '/',
+      element: <AppShell />,
+      children: [
+        { index: true, element: <LandingPage /> },
+        { path: 'attention', element: <AttentionPage /> },
+        { path: 'goals', element: lazyRoute(<GoalsPage />) },
+        { path: 'reports', element: lazyRoute(<ReportsPage />) },
+        { path: 'ledger', element: lazyRoute(<LedgerPage />) },
+        { path: 'proposals', element: lazyRoute(<ProposalsPage />) },
+        { path: 'skills', element: <SkillsPage /> },
+        { path: 'signals', element: lazyRoute(<LedgerPage />) },
+        { path: 'todos', element: <TodosPage /> },
+        { path: 'jira', element: <JirasPage /> },
+        { path: 'meetings', element: <MeetingsPage /> },
+        { path: 'webex', element: <WebexPage /> },
+      ],
+    },
+  ],
+  { basename }
+)

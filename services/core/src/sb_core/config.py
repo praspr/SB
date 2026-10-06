@@ -16,7 +16,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from pydantic import field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import (
     BaseSettings,
     EnvSettingsSource,
@@ -140,6 +140,16 @@ class Settings(BaseSettings):
     llm_tier: str | None = None
     llm_model: str = "claude-haiku-4.5-low"
     llm_cache_dir: Path = Path("~/.local/share/sb/cache")
+
+    # ---- Web dashboard (built SPA, hosted under /_ui) ----
+    # Defaults to <repo_root>/web/dist. Repo root is two parents above the
+    # services/core package (services/core -> services -> repo root).
+    # Overridable via ``SB_WEB_DIST_PATH`` (not the usual ``SB_CORE_`` prefix,
+    # to match the frontend build's own tooling conventions).
+    web_dist_path: Path = Field(
+        default=Path(__file__).resolve().parents[4] / "web" / "dist",
+        validation_alias="SB_WEB_DIST_PATH",
+    )
 
     # ---- Expand nested identity + derive detailed roots from YAML/env ----
 

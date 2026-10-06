@@ -1193,6 +1193,7 @@ source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
     { name = "fastmcp" },
+    { name = "httpx" },
     { name = "pydantic-settings" },
     { name = "pyyaml" },
     { name = "sb-jira" },
@@ -1210,6 +1211,7 @@ dev = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
     { name = "fastmcp", specifier = ">=4.0,<5" },
+    { name = "httpx", specifier = ">=0.28" },
     { name = "pydantic-settings", specifier = ">=2.5" },
     { name = "pyyaml", specifier = ">=6" },
     { name = "sb-jira", editable = "../jira" },

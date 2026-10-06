@@ -11,7 +11,10 @@
 
 ### Added
 
-- Redesign Today as a minimal daily focus view and Todos as a searchable, sortable, grouped productivity list with at-a-glance counts.
+- Add `scripts/sb-serve.sh`, a convenience dev entry point that builds the dashboard and runs sb-core so the MCP transports and the UI serve same-origin from one process. Flags: `--no-build`, `--host`, `--port`, `--open`; honors `SB_HOST`/`SB_PORT`/`SB_WEB_DIST_PATH`.
+- Serve the built web dashboard same-origin from sb-core under the `/_ui` prefix, so the single `com.praspr.sb` launchd process hosts both the MCP transports and the production UI in parallel. Deep client routes fall back to `index.html`; a missing `web/dist` build returns a 503 placeholder without affecting the MCP endpoints. The served directory defaults to `web/dist` and is overridable via `SB_WEB_DIST_PATH`.
+- Add same-origin usage passthrough routes `/proxy/claudegate/{path}` and `/proxy/cursor/{path}` on sb-core (httpx) that mirror the Vite dev proxies, so the Copilot and Cursor usage tiles work when the dashboard is served from sb-core. The Cursor `WorkosCursorSessionToken` cookie is built server-side by `sb_core/cursor_auth.py` (stdlib port of the Vite `cursor-auth.ts`), read read-only from Cursor.app's `state.vscdb`, cached five minutes, and failing soft; the browser never sees the token.
+- Make the dashboard production-aware: the MCP endpoint resolves to `/mcp` in prod and `/proxy/mcp` in dev, Vite builds under `base: '/_ui/'`, and the React Router basename is `/_ui`.
 - Show Copilot and Cursor usage as compact pie charts in the top bar, with the full quota details on hover, next to the system date and time.
 - Add prefilled, idempotent todo creation from JIRA rows, Webex attention items, and meeting todo proposals.
 - Add JIRA untracking controls that stop future refreshes while retaining the local markdown mirror.
@@ -29,13 +32,3 @@
 - Add evidence-backed wraps and local CHANGELOG proposals. Every factual bullet cites `[signal:N]`, approval only appends `CHANGELOG.md` under a configured root, and the Wrap page can approve or reject a pending proposal.
 - Add a deterministic standup of 5–8 bullets drawn from today's plan, the previous day's wrap, and high-priority todos, plus a Standup page that can copy them.
 - Document the single `sb-core` process in the README architecture. The old two-server launch instructions are replaced by the prepared, not-yet-applied cutover.
-
-
-## [2026-10-01]
-- **15:11:27 UTC** · **Removed** Removed todo "Phase 2g smoke test task" `9`
-- **15:11:17 UTC** · **Completed** Completed todo "Phase 2g smoke test task" `9`
-- **15:11:13 UTC** · **Added** Added todo "Phase 2g smoke test task" `9`
-
-## [2026-09-30]
-- **19:17:50 UTC** · **Reviewed** it looks like the certificate used above is signed by an internal signer and there are some other hostnames that need to be used. I'll make a new PR to use them per-env. `Common AI - Agent Team`
-
