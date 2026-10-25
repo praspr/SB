@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { listJiraTickets, TASKS_QUERY_KEY, useUpdateTask } from '@/lib/queries'
 import { listGoalsV2 } from '@/lib/goals'
@@ -121,74 +123,55 @@ export function AddTodoDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent>
         <DialogTitle>{editing ? 'Edit todo' : 'New todo'}</DialogTitle>
+        <p className="mt-1 text-12 text-text-secondary">
+          {editing ? 'Update the details for this todo.' : 'Capture what needs to get done and when.'}
+        </p>
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-          <div>
-            <label className="mb-1 block text-12 text-text-secondary">Title</label>
-            <Input
-              autoFocus
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="What needs to get done?"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-12 text-text-secondary">Description</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              className="w-full rounded-md border border-border-subtle bg-bg-panel px-3 py-2 text-13 text-text-primary outline-none focus:border-accent-500"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
+          <section className="space-y-3 rounded-lg border border-border-subtle bg-surface-1 p-4">
+            <div className="text-11 uppercase tracking-[0.14em] text-text-muted">Details</div>
             <div>
-              <label className="mb-1 block text-12 text-text-secondary">Priority</label>
-              <select
-                value={priority}
-                onChange={(e) => setPriority(Number(e.target.value) as Priority)}
-                className="h-9 w-full rounded-md border border-border-subtle bg-bg-panel px-2 text-13 text-text-primary outline-none focus:border-accent-500"
-              >
-                <option value={1}>1 — Highest</option>
-                <option value={2}>2 — High</option>
-                <option value={3}>3 — Medium</option>
-                <option value={4}>4 — Low</option>
-              </select>
+              <label className="mb-1 block text-12 text-text-secondary">Title</label>
+              <Input
+                autoFocus
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="What needs to get done?"
+              />
             </div>
             <div>
-              <label className="mb-1 block text-12 text-text-secondary">Domain</label>
-              <select
-                value={domain}
-                onChange={(e) => setDomain(e.target.value as Task['domain'])}
-                className="h-9 w-full rounded-md border border-border-subtle bg-bg-panel px-2 text-13 text-text-primary outline-none focus:border-accent-500"
-              >
-                <option value="work">Work</option>
-                <option value="learning">Learning</option>
-                <option value="personal">Personal</option>
-              </select>
+              <label className="mb-1 block text-12 text-text-secondary">Description</label>
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+                placeholder="Add any context or notes…"
+              />
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-12 text-text-secondary">Goal</label>
-              <select value={goalId} onChange={(e) => setGoalId(e.target.value)} className="h-9 w-full rounded-md border border-border-subtle bg-bg-panel px-2 text-13 text-text-primary outline-none focus:border-accent-500">
-                <option value="">None</option>
-                {(goals.data ?? []).map((goal) => <option key={goal.id} value={goal.id}>{goal.title}</option>)}
-              </select>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-12 text-text-secondary">Priority</label>
+                <Select value={priority} onChange={(e) => setPriority(Number(e.target.value) as Priority)}>
+                  <option value={1}>1 — Highest</option>
+                  <option value={2}>2 — High</option>
+                  <option value={3}>3 — Medium</option>
+                  <option value={4}>4 — Low</option>
+                </Select>
+              </div>
+              <div>
+                <label className="mb-1 block text-12 text-text-secondary">Domain</label>
+                <Select value={domain} onChange={(e) => setDomain(e.target.value as Task['domain'])}>
+                  <option value="work">Work</option>
+                  <option value="learning">Learning</option>
+                  <option value="personal">Personal</option>
+                </Select>
+              </div>
             </div>
-            <div>
-              <label className="mb-1 block text-12 text-text-secondary">JIRA key</label>
-              <>
-                <Input list="jira-ticket-keys" value={jiraRef} onChange={(e) => setJiraRef(e.target.value)} placeholder="CXP-12345" />
-                <datalist id="jira-ticket-keys">
-                  {(jiraTickets.data ?? []).map((ticket) => <option key={ticket.key} value={ticket.key} />)}
-                </datalist>
-              </>
-            </div>
-          </div>
-          <div className="rounded-xl border border-border-subtle bg-black/20 p-3">
+          </section>
+
+          <section className="space-y-3 rounded-lg border border-border-subtle bg-surface-1 p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <label className="block text-12 uppercase tracking-[0.18em] text-text-muted">Due</label>
+                <div className="text-11 uppercase tracking-[0.14em] text-text-muted">Scheduling</div>
                 <div className="mt-1 text-12 text-text-secondary">Leave time empty for a date-only todo (no alert).</div>
               </div>
               {dueDate ? (
@@ -199,13 +182,13 @@ export function AddTodoDialog() {
                     setDueTime('')
                     setRemindBeforeMinutes('0')
                   }}
-                  className="rounded-full border border-border-subtle px-2.5 py-1 text-12 text-text-muted transition-colors duration-fast ease-out hover:border-border-strong hover:text-text-primary"
+                  className="focus-ring rounded-md border border-border-subtle px-2.5 py-1 text-12 text-text-muted transition-colors duration-fast ease-out hover:border-border-strong hover:text-text-primary"
                 >
                   Clear
                 </button>
               ) : null}
             </div>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2">
               <label>
                 <div className="mb-1 text-12 text-text-secondary">Date</div>
                 <input
@@ -213,7 +196,7 @@ export function AddTodoDialog() {
                   aria-label="Due date"
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
-                  className="h-9 w-full rounded-md border border-border-subtle bg-bg-panel px-3 text-13 text-text-primary outline-none focus:border-accent-500"
+                  className="focus-ring h-9 w-full rounded-md border border-border-subtle bg-surface-sunken px-3 text-13 text-text-primary shadow-[inset_0_1px_2px_rgba(0,0,0,0.3)] focus-visible:border-accent-500"
                 />
               </label>
               {dueDate ? (
@@ -224,13 +207,13 @@ export function AddTodoDialog() {
                     aria-label="Due time"
                     value={dueTime}
                     onChange={(e) => setDueTime(e.target.value)}
-                    className="h-9 w-full rounded-md border border-border-subtle bg-bg-panel px-3 text-13 text-text-primary outline-none focus:border-accent-500"
+                    className="focus-ring h-9 w-full rounded-md border border-border-subtle bg-surface-sunken px-3 text-13 text-text-primary shadow-[inset_0_1px_2px_rgba(0,0,0,0.3)] focus-visible:border-accent-500"
                   />
                 </label>
               ) : null}
             </div>
             {dueDate && dueTime ? (
-              <label className="mt-3 block">
+              <label className="block">
                 <div className="mb-1 text-12 text-text-secondary">Remind me N minutes before</div>
                 <input
                   type="number"
@@ -239,12 +222,12 @@ export function AddTodoDialog() {
                   aria-label="Remind me minutes before"
                   value={remindBeforeMinutes}
                   onChange={(e) => setRemindBeforeMinutes(e.target.value)}
-                  className="h-9 w-full rounded-md border border-border-subtle bg-bg-panel px-3 text-13 text-text-primary outline-none focus:border-accent-500"
+                  className="focus-ring h-9 w-full rounded-md border border-border-subtle bg-surface-sunken px-3 text-13 text-text-primary shadow-[inset_0_1px_2px_rgba(0,0,0,0.3)] focus-visible:border-accent-500"
                 />
               </label>
             ) : null}
             {showNotifyPrompt ? (
-              <div className="mt-3 rounded-lg border border-accent-500/30 bg-accent-500/10 p-3">
+              <div className="rounded-lg border border-accent-500/30 bg-accent-500/10 p-3">
                 <div className="text-13 font-medium text-text-primary">Enable popup reminders</div>
                 <div className="mt-1 text-12 text-text-secondary">
                   sb can show an OS-level popup when this todo is due. You will still get an in-app reminder toast either way.
@@ -274,23 +257,46 @@ export function AddTodoDialog() {
                 </div>
               </div>
             ) : null}
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-12 text-text-secondary">Recurrence</label>
-              <select value={recurrencePreset} onChange={(e) => setRecurrencePreset(e.target.value)} className="h-9 w-full rounded-md border border-border-subtle bg-bg-panel px-2 text-13 text-text-primary outline-none focus:border-accent-500">
-                <option value="">None</option>
-                <option value="FREQ=DAILY">Daily</option>
-                <option value="FREQ=WEEKLY">Weekly</option>
-                <option value="FREQ=MONTHLY">Monthly</option>
-                <option value="custom">Custom (RRULE)</option>
-              </select>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-12 text-text-secondary">Recurrence</label>
+                <Select value={recurrencePreset} onChange={(e) => setRecurrencePreset(e.target.value)}>
+                  <option value="">None</option>
+                  <option value="FREQ=DAILY">Daily</option>
+                  <option value="FREQ=WEEKLY">Weekly</option>
+                  <option value="FREQ=MONTHLY">Monthly</option>
+                  <option value="custom">Custom (RRULE)</option>
+                </Select>
+              </div>
+              <div>
+                <label className="mb-1 block text-12 text-text-secondary">Custom RRULE</label>
+                <Input value={customRrule} onChange={(e) => setCustomRrule(e.target.value)} placeholder="FREQ=WEEKLY;BYDAY=MO,WE" disabled={recurrencePreset !== 'custom'} />
+              </div>
             </div>
-            <div>
-              <label className="mb-1 block text-12 text-text-secondary">Custom RRULE</label>
-              <Input value={customRrule} onChange={(e) => setCustomRrule(e.target.value)} placeholder="FREQ=WEEKLY;BYDAY=MO,WE" disabled={recurrencePreset !== 'custom'} />
+          </section>
+
+          <section className="space-y-3 rounded-lg border border-border-subtle bg-surface-1 p-4">
+            <div className="text-11 uppercase tracking-[0.14em] text-text-muted">Linking</div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-12 text-text-secondary">Goal</label>
+                <Select value={goalId} onChange={(e) => setGoalId(e.target.value)}>
+                  <option value="">None</option>
+                  {(goals.data ?? []).map((goal) => <option key={goal.id} value={goal.id}>{goal.title}</option>)}
+                </Select>
+              </div>
+              <div>
+                <label className="mb-1 block text-12 text-text-secondary">JIRA key</label>
+                <>
+                  <Input list="jira-ticket-keys" value={jiraRef} onChange={(e) => setJiraRef(e.target.value)} placeholder="CXP-12345" />
+                  <datalist id="jira-ticket-keys">
+                    {(jiraTickets.data ?? []).map((ticket) => <option key={ticket.key} value={ticket.key} />)}
+                  </datalist>
+                </>
+              </div>
             </div>
-          </div>
+          </section>
+
           <div className="flex justify-end gap-2 pt-1">
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
               Cancel
