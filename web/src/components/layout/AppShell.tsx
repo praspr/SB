@@ -68,7 +68,7 @@ export function AppShell() {
     <div className="flex h-screen w-full overflow-hidden bg-bg-app text-text-primary">
       <Sidebar />
       <main className="flex min-w-0 flex-1 flex-col">
-        <TopBar title={location.pathname === '/' ? undefined : meta?.title} subtitle={location.pathname === '/' ? undefined : meta?.subtitle} />
+        {location.pathname === '/' ? null : <TopBar title={meta?.title} subtitle={meta?.subtitle} />}
         <div className="flex-1 overflow-y-auto px-6 py-6 lg:px-8">
           <AnimatePresence mode="wait">
             <motion.div
