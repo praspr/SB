@@ -115,6 +115,12 @@ def test_system_status_reports_readiness() -> None:
     assert status["counts"]["tools"] == len(names)
     assert status["counts"]["prompts"] == prompt_count
     assert status["counts"]["resources"] == resource_count
+    assert status["disk"] is not None
+    assert isinstance(status["disk"]["total"], int)
+    assert isinstance(status["disk"]["used"], int)
+    assert isinstance(status["disk"]["free"], int)
+    assert isinstance(status["disk"]["percent"], float)
+    assert 0.0 <= status["disk"]["percent"] <= 100.0
     assert str(Path.home()) not in json.dumps(status)
 
 

@@ -1,5 +1,6 @@
 """Foundation MCP surface for the standalone sb core service."""
 
+import shutil
 from typing import Any
 
 from fastmcp import FastMCP
@@ -98,6 +99,19 @@ async def system_status() -> dict[str, Any]:
     tools = await mcp.list_tools()
     prompts = await mcp.list_prompts()
     resources = await mcp.list_resources()
+
+    disk_info: dict[str, Any] | None = None
+    try:
+        usage = shutil.disk_usage("/")
+        disk_info = {
+            "total": usage.total,
+            "used": usage.used,
+            "free": usage.free,
+            "percent": round(usage.used / usage.total * 100, 1) if usage.total else 0.0,
+        }
+    except Exception:
+        disk_info = None
+
     return {
         "status": "ok" if database_ready else "degraded",
         "version": __version__,
@@ -106,6 +120,7 @@ async def system_status() -> dict[str, Any]:
             "schema_version": schema_version_value,
             "path": settings.db_path.expanduser().name,
         },
+        "disk": disk_info,
         "counts": {
             "tools": len(tools),
             "prompts": len(prompts),
