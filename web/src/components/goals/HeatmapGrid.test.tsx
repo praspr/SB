@@ -11,10 +11,10 @@ describe('HeatmapGrid', () => {
       />,
     )
 
-    expect(html).toContain('Heatmap · last 7 days')
-    expect(html).toContain('Combined ledger + todo hits · Last 7 days')
-    expect(html).toContain('Low')
-    expect(html).toContain('High')
+    expect(html).toContain('Weekly activity')
+    expect(html).toContain('last 7 days')
+    expect(html).toContain('Combined ledger + todo hits')
+    expect(html).toContain('healthy')
     expect(html).toContain('Ship the multi-surface l…')
     expect(html).toContain('title="Ship the multi-surface launch checklist this week"')
   })
