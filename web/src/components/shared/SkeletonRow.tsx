@@ -12,7 +12,7 @@ export function SkeletonRow({ lines = 3, compact }: SkeletonRowProps) {
         <div
           key={i}
           className={cn(
-            'animate-pulse rounded-lg border border-border-subtle bg-bg-panel',
+            'skeleton rounded-lg border border-border-subtle bg-surface-1',
             compact ? 'h-9' : 'h-14'
           )}
         />
