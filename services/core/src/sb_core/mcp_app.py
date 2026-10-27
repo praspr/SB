@@ -63,6 +63,10 @@ def _mount_domains() -> None:
 
     ensure_default_sync_schedules()
 
+    from .local_gate import WriteToolGate
+
+    mcp.add_middleware(WriteToolGate())
+
 
 def _seed_ledger_registry() -> None:
     """Seed the ledger project registry on first run, using a fresh short-lived

@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 from typing import Optional
 
-REDACTION_RULES_VERSION = 1
+REDACTION_RULES_VERSION = 2
 
 # Each rule: (kind, compiled pattern, replacement template or callable).
 # Replacement receives the match and returns the substituted text.
@@ -35,6 +35,23 @@ _ENV_SECRET_RE = re.compile(
 )
 
 _LANGSMITH_KEY_RE = re.compile(r"\bls__[A-Za-z0-9]{20,}\b")
+
+# Provider-specific API tokens (specific-first, before the generic rules).
+_GITHUB_TOKEN_RE = re.compile(r"\bgh[pousr]_[A-Za-z0-9]{36,}\b")
+_OPENAI_KEY_RE = re.compile(r"\bsk-(?:proj-)?[A-Za-z0-9_-]{20,}\b")
+_SLACK_TOKEN_RE = re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{10,}\b")
+_GOOGLE_API_KEY_RE = re.compile(r"\bAIza[0-9A-Za-z_\-]{35}\b")
+_STRIPE_KEY_RE = re.compile(r"\b(?:sk|rk)_live_[A-Za-z0-9]{24,}\b")
+
+# Generic ``api_key: value`` / ``token = value`` in prose, where the keyword
+# names a secret. Conservative: only fires when a secret keyword is adjacent,
+# so it never touches ordinary ``name = value`` assignments. The value capture
+# excludes an already-substituted ``[REDACTED:...]`` marker so this rule never
+# clobbers a more specific rule that already ran (JWT, long-hex, etc.).
+_GENERIC_SECRET_KV_RE = re.compile(
+    r"(?i)\b(api[_-]?key|secret|token|password|passwd)\b(\s*[:=]\s*)"
+    r"(['\"]?)(?!\[REDACTED:)([^\s'\"]{8,})(['\"]?)"
+)
 
 # Generic long hex, but only when a secret-ish keyword appears within 20 chars
 # before it (so commit SHAs etc. are left alone).
@@ -84,6 +101,43 @@ def _redact_langsmith_key(text: str) -> tuple[str, bool]:
     return new_text, n > 0
 
 
+def _redact_github_token(text: str) -> tuple[str, bool]:
+    new_text, n = _GITHUB_TOKEN_RE.subn("[REDACTED:GITHUB_TOKEN]", text)
+    return new_text, n > 0
+
+
+def _redact_openai_key(text: str) -> tuple[str, bool]:
+    new_text, n = _OPENAI_KEY_RE.subn("[REDACTED:OPENAI_KEY]", text)
+    return new_text, n > 0
+
+
+def _redact_slack_token(text: str) -> tuple[str, bool]:
+    new_text, n = _SLACK_TOKEN_RE.subn("[REDACTED:SLACK_TOKEN]", text)
+    return new_text, n > 0
+
+
+def _redact_google_api_key(text: str) -> tuple[str, bool]:
+    new_text, n = _GOOGLE_API_KEY_RE.subn("[REDACTED:GOOGLE_API_KEY]", text)
+    return new_text, n > 0
+
+
+def _redact_stripe_key(text: str) -> tuple[str, bool]:
+    new_text, n = _STRIPE_KEY_RE.subn("[REDACTED:STRIPE_KEY]", text)
+    return new_text, n > 0
+
+
+def _redact_generic_secret_kv(text: str) -> tuple[str, bool]:
+    """Redact the value in ``api_key: <value>`` / ``token = <value>`` when the
+    keyword names a secret. Preserves the keyword, operator, and any quotes."""
+
+    def _sub(m: re.Match) -> str:
+        keyword, op, open_q, _value, close_q = m.groups()
+        return f"{keyword}{op}{open_q}[REDACTED:SECRET_KV]{close_q}"
+
+    new_text, n = _GENERIC_SECRET_KV_RE.subn(_sub, text)
+    return new_text, n > 0
+
+
 def _redact_generic_long_hex(text: str) -> tuple[str, bool]:
     changed = False
 
@@ -105,9 +159,15 @@ _RULES = [
     _redact_bearer,
     _redact_jwt,
     _redact_basic_auth_url,
+    _redact_github_token,
+    _redact_openai_key,
+    _redact_slack_token,
+    _redact_google_api_key,
+    _redact_stripe_key,
     _redact_env_secret,
     _redact_langsmith_key,
     _redact_generic_long_hex,
+    _redact_generic_secret_kv,
 ]
 
 

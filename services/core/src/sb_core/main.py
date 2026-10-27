@@ -49,6 +49,9 @@ async def _scheduler_loop() -> None:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    from .local_token import ensure_token
+
+    ensure_token()  # issue the write-tool gate token (0o600) on first boot
     conn = connect(settings.db_path)
     try:
         refresh_skill_surface(mcp, conn)

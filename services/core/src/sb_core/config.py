@@ -112,6 +112,11 @@ class Settings(BaseSettings):
     skills_root: Path | None = None
     extra_skill_roots: list[str] = []
 
+    # ---- Write-tool access gate (M5) ----
+    # When False (default), the gate is observe-only: write tools without a
+    # valid local token are logged but still run. Flip to True to enforce.
+    require_local_token: bool = False
+
     # Core SQLite store path
     db_path: Path = Path("~/.local/share/sb/core.db")
 
@@ -126,6 +131,30 @@ class Settings(BaseSettings):
 
     # Bounded roots to scan for ledger project suggestions (not auto-enrolled)
     ledger_roots: list[str] = ["~/Documents/code_home"]
+
+    # Projects seeded into the ledger registry on first run (decision 9). Each
+    # item is {project, root_path, changelog_path?, sync_mode?}. Defaults to the
+    # current user's ciq + sb; override via SB_CORE_SEED_PROJECTS (JSON array)
+    # or the YAML config to make the install portable.
+    seed_projects: list[dict] = [
+        {
+            "project": "ciq",
+            "root_path": "~/Documents/code_home/ciq",
+            "changelog_path": "~/Documents/code_home/ciq/CHANGELOG.md",
+            "sync_mode": "dual",
+        },
+        {
+            "project": "sb",
+            "root_path": "~/Documents/code_home/sb",
+            "changelog_path": "~/Documents/code_home/sb/CHANGELOG.md",
+            "sync_mode": "dual",
+        },
+    ]
+
+    # Name -> email map for people in the local JIRA mirror (used to fill in
+    # assignee/reporter emails). Overridable via config; defaults are the
+    # current user's known mapping.
+    known_emails: dict[str, str] = {"PRASAD P R": "praspr@cisco.com"}
 
     # ---- Identity (optional; no secrets) ----
     identity_name: str | None = None
@@ -240,27 +269,16 @@ settings = Settings()
 
 
 # ---------------------------------------------------------------------------
-# Ledger project registry seed (decision 9: seed exactly ciq + sb, dual mode)
+# Ledger project registry seed (decision 9: seed exactly ciq + sb, dual mode).
+# The seed list is now config-driven (settings.seed_projects); this alias is
+# kept for backward compatibility with any importer.
 # ---------------------------------------------------------------------------
 
-_SEED_PROJECTS: tuple[dict, ...] = (
-    {
-        "project": "ciq",
-        "root_path": "~/Documents/code_home/ciq",
-        "changelog_path": "~/Documents/code_home/ciq/CHANGELOG.md",
-        "sync_mode": "dual",
-    },
-    {
-        "project": "sb",
-        "root_path": "~/Documents/code_home/sb",
-        "changelog_path": "~/Documents/code_home/sb/CHANGELOG.md",
-        "sync_mode": "dual",
-    },
-)
+_SEED_PROJECTS: tuple[dict, ...] = tuple(settings.seed_projects)
 
 
 def seed_registry_if_empty(conn: Any) -> bool:
-    """Seed ``sb_project_registry`` with ``ciq`` and ``sb`` if it is empty.
+    """Seed ``sb_project_registry`` from ``settings.seed_projects`` if empty.
 
     Never auto-enrolls any other repo. Returns True if a seed was performed.
     """
@@ -268,16 +286,17 @@ def seed_registry_if_empty(conn: Any) -> bool:
     if row is not None and int(row["n"]) > 0:
         return False
 
-    for seed in _SEED_PROJECTS:
+    for seed in settings.seed_projects:
         root = str(Path(seed["root_path"]).expanduser())
-        changelog = str(Path(seed["changelog_path"]).expanduser())
+        changelog_raw = seed.get("changelog_path") or f"{seed['root_path']}/CHANGELOG.md"
+        changelog = str(Path(changelog_raw).expanduser())
         conn.execute(
             """
             INSERT OR IGNORE INTO sb_project_registry
               (project, root_path, changelog_path, sync_mode)
             VALUES (?, ?, ?, ?)
             """,
-            (seed["project"], root, changelog, seed["sync_mode"]),
+            (seed["project"], root, changelog, seed.get("sync_mode", "dual")),
         )
     conn.commit()
     return True

@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import fcntl
+import os
 import re
 import sqlite3
 from contextlib import contextmanager
@@ -135,7 +136,27 @@ def append_to_changelog(changelog_path: Path, row: dict) -> None:
         lines = text.splitlines(keepends=True)
         new_lines = _insert_bullet(lines, heading, bullet)
         changelog_path.parent.mkdir(parents=True, exist_ok=True)
-        changelog_path.write_text("".join(new_lines), encoding="utf-8")
+        _atomic_write(changelog_path, "".join(new_lines))
+
+
+def _atomic_write(path: Path, content: str) -> None:
+    """Write *content* to *path* atomically via a temp file + ``os.replace``.
+
+    A crash/kill/disk-full mid-write can never truncate the existing file: the
+    content lands in a sibling temp file first, and the swap is atomic on POSIX.
+    The temp file is cleaned up on any error. Mirrors ``llm.py:_write_cache``.
+    """
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        tmp.write_text(content, encoding="utf-8")
+        os.replace(tmp, path)
+    except OSError:
+        try:
+            if tmp.exists():
+                tmp.unlink()
+        except OSError:
+            pass
+        raise
 
 
 def _line_ending(line: str) -> str:

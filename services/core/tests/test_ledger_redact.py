@@ -10,7 +10,7 @@ from sb_core.ledger_redact import REDACTION_RULES_VERSION, redact, redact_entry
 
 
 def test_rules_version_is_stamped() -> None:
-    assert REDACTION_RULES_VERSION == 1
+    assert REDACTION_RULES_VERSION == 2
 
 
 # ---------------------------------------------------------------------------
@@ -175,9 +175,147 @@ def test_generic_long_hex_no_op_for_bare_commit_sha() -> None:
 
 
 # ---------------------------------------------------------------------------
-# redact_entry integration
+# GITHUB_TOKEN
 # ---------------------------------------------------------------------------
 
+
+def test_github_token_is_redacted() -> None:
+    text = "use ghp_" + "A" * 36 + " to authenticate"
+    scrubbed, changed = redact(text)
+    assert changed is True
+    assert "ghp_" + "A" * 36 not in scrubbed
+    assert "[REDACTED:GITHUB_TOKEN]" in scrubbed
+
+
+def test_github_token_no_op_when_too_short() -> None:
+    text = "ghp_short"
+    scrubbed, changed = redact(text)
+    assert changed is False
+    assert scrubbed == text
+
+
+# ---------------------------------------------------------------------------
+# OPENAI_KEY
+# ---------------------------------------------------------------------------
+
+
+def test_openai_key_is_redacted() -> None:
+    text = "OPENAI key sk-proj-" + "a1B2" * 8 + " leaked"
+    scrubbed, changed = redact(text)
+    assert changed is True
+    assert "[REDACTED:OPENAI_KEY]" in scrubbed
+    assert "sk-proj-a1B2" not in scrubbed
+
+
+def test_openai_key_no_op_on_short_sk_prefix() -> None:
+    text = "the ski trip was great"
+    scrubbed, changed = redact(text)
+    assert changed is False
+    assert scrubbed == text
+
+
+# ---------------------------------------------------------------------------
+# SLACK_TOKEN
+# ---------------------------------------------------------------------------
+
+
+def test_slack_token_is_redacted() -> None:
+    text = "xoxb-123456789012-abcdefghijklmnop pasted"
+    scrubbed, changed = redact(text)
+    assert changed is True
+    assert "[REDACTED:SLACK_TOKEN]" in scrubbed
+    assert "xoxb-123456789012" not in scrubbed
+
+
+def test_slack_token_no_op_on_unrelated_text() -> None:
+    text = "the box office opens at noon"
+    scrubbed, changed = redact(text)
+    assert changed is False
+    assert scrubbed == text
+
+
+# ---------------------------------------------------------------------------
+# GOOGLE_API_KEY
+# ---------------------------------------------------------------------------
+
+
+def test_google_api_key_is_redacted() -> None:
+    text = "key AIza" + "B" * 35 + " in config"
+    scrubbed, changed = redact(text)
+    assert changed is True
+    assert "[REDACTED:GOOGLE_API_KEY]" in scrubbed
+    assert "AIza" + "B" * 35 not in scrubbed
+
+
+def test_google_api_key_no_op_when_wrong_length() -> None:
+    text = "AIzaShortKey"
+    scrubbed, changed = redact(text)
+    assert changed is False
+    assert scrubbed == text
+
+
+# ---------------------------------------------------------------------------
+# STRIPE_KEY
+# ---------------------------------------------------------------------------
+
+
+def test_stripe_key_is_redacted() -> None:
+    text = "stripe sk_live_" + "c" * 24 + " exposed"
+    scrubbed, changed = redact(text)
+    assert changed is True
+    assert "[REDACTED:STRIPE_KEY]" in scrubbed
+    assert "sk_live_" + "c" * 24 not in scrubbed
+
+
+def test_stripe_key_no_op_on_test_key_prefix() -> None:
+    text = "sk_test_shortvalue is a test key"
+    scrubbed, changed = redact(text)
+    assert changed is False
+    assert scrubbed == text
+
+
+# ---------------------------------------------------------------------------
+# GENERIC_SECRET_KV
+# ---------------------------------------------------------------------------
+
+
+def test_generic_secret_kv_is_redacted() -> None:
+    text = 'config: api_key = "mysupersecretvalue123"'
+    scrubbed, changed = redact(text)
+    assert changed is True
+    assert "mysupersecretvalue123" not in scrubbed
+    assert "[REDACTED:SECRET_KV]" in scrubbed
+
+
+def test_generic_secret_kv_no_op_on_non_secret_keyword() -> None:
+    text = "name = alice and city = portland"
+    scrubbed, changed = redact(text)
+    assert changed is False
+    assert scrubbed == text
+
+
+# ---------------------------------------------------------------------------
+# Over-redaction guards (false-positive protection)
+# ---------------------------------------------------------------------------
+
+
+def test_bare_commit_sha_is_not_redacted() -> None:
+    text = "merged at 1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b"
+    scrubbed, changed = redact(text)
+    assert changed is False
+    assert scrubbed == text
+
+
+def test_uuid_is_not_redacted() -> None:
+    text = "session 550e8400-e29b-41d4-a716-446655440000 started"
+    scrubbed, changed = redact(text)
+    assert changed is False
+    assert scrubbed == text
+
+
+# ---------------------------------------------------------------------------
+# redact_entry integration
+# ---------------------------------------------------------------------------
 
 def test_redact_entry_scrubs_summary_body_and_refs() -> None:
     summary, body, refs, changed = redact_entry(
