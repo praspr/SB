@@ -128,10 +128,15 @@ def append_ledger(
             content_sha256,
         ),
     )
-    conn.commit()
     new_id = conn.execute(
         "SELECT id FROM sb_ledger WHERE content_sha256 = ?", (content_sha256,)
     ).fetchone()["id"]
+
+    # Populate the normalized refs index (M2). Derived child rows; the ledger
+    # itself stays append-only.
+    _index_refs(conn, new_id, scrubbed_refs or [])
+
+    conn.commit()
 
     return {
         "id": new_id,
@@ -139,6 +144,28 @@ def append_ledger(
         "redaction_applied": redaction_applied,
         "was_new": True,
     }
+
+
+def _index_refs(conn: sqlite3.Connection, ledger_id: int, refs: list[dict]) -> None:
+    """Insert ``{ledger_id, kind, value}`` rows into ``sb_ledger_refs``.
+
+    Best-effort and tolerant of an older schema (pre-m12): if the table does
+    not exist yet, silently skip indexing.
+    """
+    try:
+        for ref in refs:
+            if not isinstance(ref, dict):
+                continue
+            kind = ref.get("kind")
+            value = ref.get("value")
+            if isinstance(kind, str) and value is not None:
+                conn.execute(
+                    "INSERT INTO sb_ledger_refs (ledger_id, kind, value) VALUES (?, ?, ?)",
+                    (ledger_id, kind, str(value)),
+                )
+    except sqlite3.OperationalError:
+        # sb_ledger_refs not present (schema older than m12) — skip.
+        pass
 
 
 def get_ledger(conn: sqlite3.Connection, ledger_id: int) -> Optional[dict]:
@@ -207,11 +234,29 @@ def search_ledger(
 
 
 def by_ref(conn: sqlite3.Connection, *, kind: str, value: str, limit: int = 50) -> list[dict]:
-    """Return ledger rows whose ``refs`` JSON contains a ``{kind, value}`` pair.
+    """Return ledger rows whose ``refs`` include a ``{kind, value}`` pair.
 
-    Filtering is done in Python (refs is a small JSON array per row) rather
-    than a fragile LIKE match on serialized JSON.
+    Uses the normalized ``sb_ledger_refs`` index (M2). Falls back to a bounded
+    full scan + Python filter when the index is absent (schema older than m12).
     """
+    try:
+        rows = conn.execute(
+            """
+            SELECT l.* FROM sb_ledger_refs r
+            JOIN sb_ledger l ON l.id = r.ledger_id
+            WHERE r.kind = ? AND r.value = ?
+            ORDER BY l.ts DESC
+            LIMIT ?
+            """,
+            (kind, str(value), limit),
+        ).fetchall()
+        return [_row_to_dict(row) for row in rows]
+    except sqlite3.OperationalError:
+        return _by_ref_scan(conn, kind=kind, value=value, limit=limit)
+
+
+def _by_ref_scan(conn: sqlite3.Connection, *, kind: str, value: str, limit: int = 50) -> list[dict]:
+    """Legacy fallback: bounded full scan + Python JSON filter (pre-m12)."""
     rows = conn.execute(
         "SELECT * FROM sb_ledger ORDER BY ts DESC LIMIT 2000"
     ).fetchall()

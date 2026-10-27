@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from sb_jira import atlassian_client
 
 
@@ -75,3 +77,16 @@ def test_fetch_gets_search_jql_and_follows_next_page(monkeypatch):
     assert [ticket.key for ticket in tickets] == ["CXP-1", "CXP-2"]
     assert calls[1]["nextPageToken"] == "page-2"
     assert "summary" in calls[0]["fields"]
+
+
+def test_fetch_issue_rejects_malformed_key_before_any_http(monkeypatch):
+    """L2: a crafted key must be rejected before building the request URL."""
+
+    def _boom_token():
+        raise AssertionError("get_token must not be reached for an invalid key")
+
+    monkeypatch.setattr(atlassian_client, "get_token", _boom_token)
+
+    for bad in ["../myself", "cxp-1", "CXP1", "", "CXP-", "CXP-1/../x"]:
+        with pytest.raises(ValueError):
+            atlassian_client.fetch_issue(bad)

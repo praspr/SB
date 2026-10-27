@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import base64
 import logging
+import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -21,6 +22,11 @@ from .models import JiraTicketDetail, Person, Section
 logger = logging.getLogger("sb_jira.atlassian_client")
 
 FIELDS = "summary,status,priority,assignee,reporter,updated,created,labels,fixVersions,description,issuetype"
+
+# JIRA issue keys look like ``CXP-123``. Validate before interpolating into a
+# request path so a malformed/crafted key cannot alter the URL (defense-in-depth;
+# mirrors tracking.parse_issue).
+_KEY_RE = re.compile(r"^[A-Z][A-Z0-9]*-\d+$")
 
 
 class AtlassianAuthError(Exception):
@@ -160,6 +166,8 @@ def _issue_to_detail(issue: dict[str, Any]) -> JiraTicketDetail:
 
 def fetch_issue(key: str, timeout: float = 15.0) -> JiraTicketDetail:
     """Fetch one issue by key. Read-only."""
+    if not _KEY_RE.fullmatch((key or "").strip()):
+        raise ValueError(f"invalid JIRA key: {key!r}")
     token = get_token()
     if not token:
         raise AtlassianAuthError("No Atlassian token configured")

@@ -63,6 +63,51 @@ def test_parse_cron_requires_five_fields() -> None:
         sched.parse_cron("0 16 * *")
 
 
+def test_cron_dow_7_matches_sunday() -> None:
+    sunday_9am = datetime(2026, 10, 4, 9, 0)  # 2026-10-04 is a Sunday
+    assert sched.cron_matches("0 9 * * 7", sunday_9am) is True
+    # dow=0 (also Sunday) still matches the same instant.
+    assert sched.cron_matches("0 9 * * 0", sunday_9am) is True
+
+
+def test_cron_dow_7_does_not_match_saturday() -> None:
+    saturday_9am = datetime(2026, 10, 3, 9, 0)  # Saturday
+    assert sched.cron_matches("0 9 * * 7", saturday_9am) is False
+
+
+def test_parse_cron_rejects_out_of_range_value() -> None:
+    with pytest.raises(ValueError):
+        sched.parse_cron("70 16 * * 5")  # minute 70 is impossible
+
+
+def test_parse_cron_rejects_non_integer_field() -> None:
+    with pytest.raises(ValueError):
+        sched.parse_cron("0 1x * * 5")
+
+
+def test_parse_cron_rejects_bad_step() -> None:
+    with pytest.raises(ValueError):
+        sched.parse_cron("*/0 * * * *")
+
+
+def test_dst_fall_back_does_not_double_fire(tmp_path: Path) -> None:
+    """Across a US DST fall-back (2026-11-01 02:00 → 01:00), a daily 01:30
+    schedule must not run twice given a prior last_run_at. Duplicate
+    suppression relies on fire_at > last_run_at (naive local comparison)."""
+    cron = "30 1 * * *"
+    # First occurrence of 01:30 local on the fall-back day.
+    first_fire = datetime(2026, 11, 1, 1, 30)
+    assert sched.cron_matches(cron, first_fire) is True
+    # last_scheduled_at at 01:45 returns the 01:30 minute.
+    at_0145 = datetime(2026, 11, 1, 1, 45)
+    fire_at = sched.last_scheduled_at(cron, at_0145)
+    assert fire_at is not None
+    assert fire_at == first_fire
+    # With last_run_at already at first_fire, fire_at <= last_run_at, so the
+    # schedule is "not due" — i.e. it will not double-fire.
+    assert fire_at <= first_fire
+
+
 def test_last_scheduled_at_finds_recent_match() -> None:
     now = datetime(2026, 10, 2, 16, 3)  # Friday, 3 minutes after the fire time
     result = sched.last_scheduled_at("0 16 * * 5", now)
