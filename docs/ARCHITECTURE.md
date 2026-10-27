@@ -84,6 +84,19 @@ harness; it is not mounted into `sb-core` and has no server of its own.
 - **`GET /webex/login`** and **`GET /webex/callback`** — plain HTTP redirect
   endpoints (not MCP) that drive the Webex OAuth PKCE flow
   (`services/core/src/sb_core/main.py`).
+- **`GET /_ui`, `/_ui/`, `/_ui/{path}`** — serve the built web dashboard
+  (`web/dist/`, resolved from `settings.web_dist_path` / env `SB_WEB_DIST_PATH`)
+  same-origin. Unknown `/_ui/*` subpaths fall back to `index.html` for
+  client-side routing; a missing build returns a 503 placeholder without
+  affecting the MCP routes. This lets the single launchd `com.praspr.sb`
+  process serve both the MCP transports and the production UI in parallel.
+- **`GET /proxy/claudegate/{path}`** and **`GET /proxy/cursor/{path}`** —
+  same-origin usage passthroughs (httpx) that mirror the Vite dev proxies so
+  the Copilot/Cursor usage tiles work when the UI is served from sb-core. The
+  Cursor `WorkosCursorSessionToken` cookie is built server-side by
+  `sb_core/cursor_auth.py` (stdlib port of `web/vite/cursor-auth.ts`), read
+  from Cursor.app's `state.vscdb`, cached 5 minutes, failing soft; the browser
+  never sees the token.
 
 Both `/mcp` and `/sse` are FastMCP-owned ASGI sub-apps whose routes are
 spliced directly onto the FastAPI router (`app.router.routes.extend(...)`) so

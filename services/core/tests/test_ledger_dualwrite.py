@@ -123,6 +123,61 @@ def test_append_to_changelog_preserves_existing_content_byte_for_byte_outside_to
     assert "- **Debugged** something weird" in text  # untouched legacy bullet
 
 
+def test_append_to_changelog_is_atomic_on_write_failure(tmp_path: Path, monkeypatch) -> None:
+    """A failure during the write must leave the original file byte-intact and
+    must not leave a temp-file artifact behind (H2: atomic temp + os.replace)."""
+    import sb_core.ledger_sync as ledger_sync
+
+    changelog = tmp_path / "CHANGELOG.md"
+    original = "# Changelog\n\n## [2026-09-28]\n- **Shipped** the original content\n"
+    changelog.write_text(original, encoding="utf-8")
+
+    def _boom(path, content):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(ledger_sync, "_atomic_write", _boom)
+
+    row = {
+        "ts": "2026-09-30T08:00:00Z",
+        "action_verb": "Note",
+        "summary": "entry that fails to persist",
+        "refs": [],
+        "scope": None,
+    }
+    try:
+        append_to_changelog(changelog, row)
+    except OSError:
+        pass
+
+    # Original file is untouched, and no temp residue remains.
+    assert changelog.read_text(encoding="utf-8") == original
+    residue = [p.name for p in tmp_path.iterdir() if p.name.endswith(".tmp")]
+    assert residue == []
+
+
+def test_atomic_write_cleans_up_temp_on_replace_failure(tmp_path: Path, monkeypatch) -> None:
+    """If os.replace fails after the temp file is written, the temp file is
+    removed and the original content is preserved."""
+    import sb_core.ledger_sync as ledger_sync
+
+    target = tmp_path / "CHANGELOG.md"
+    target.write_text("original\n", encoding="utf-8")
+
+    def _replace_boom(src, dst):
+        raise OSError("replace failed")
+
+    monkeypatch.setattr(ledger_sync.os, "replace", _replace_boom)
+
+    try:
+        ledger_sync._atomic_write(target, "new content\n")
+    except OSError:
+        pass
+
+    assert target.read_text(encoding="utf-8") == "original\n"
+    residue = [p.name for p in tmp_path.iterdir() if p.name.endswith(".tmp")]
+    assert residue == []
+
+
 # NOTE: the end-to-end "ledger_log tool -> SQLite row + file bullet" round
 # trip test lives in test_ledger_dualwrite_tools.py (added alongside
 # ledger_tools.py), since it needs the MCP tool layer that module provides.

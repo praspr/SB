@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     atlassian_email: str = "praspr@cisco.com"
     atlassian_jql: str = 'assignee = "praspr@cisco.com" ORDER BY updated DESC'
 
+    # Name -> email map for people in the local mirror (overridable via config/
+    # env; default is the current user's known mapping). Also drives the
+    # "First Last" -> first.last@<domain> fallback domain.
+    known_emails: dict[str, str] = {"PRASAD P R": "praspr@cisco.com"}
+    email_fallback_domain: str = "cisco.com"
+
     # keyring
     keyring_service: str = "sb"
     keyring_username: str = "jira.token"

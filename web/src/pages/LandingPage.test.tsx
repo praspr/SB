@@ -34,10 +34,11 @@ vi.mock('@/lib/store', () => ({
 }))
 vi.mock('@/components/landing/UsageStats', () => ({ UsageStats: () => <div>Usage metrics</div> }))
 vi.mock('@/components/landing/DashboardInsights', () => ({ DashboardInsights: () => <div>Status analytics</div> }))
+vi.mock('@/components/landing/HealthStrip', () => ({ HealthStrip: ({ jirasPending }: { jirasPending: number }) => <div>Health strip ({jirasPending} jiras pending)</div> }))
 vi.mock('@/components/landing/ChatPanel', () => ({ ChatPanel: () => <div>Assistant panel</div> }))
 
 describe('landing page', () => {
-  it('keeps the daily sections and leaves AI usage to the navbar when attention is empty', () => {
+  it('keeps the daily sections and inlines work analytics while leaving AI usage to the navbar when attention is empty', () => {
     mockUseJiraTickets.mockReturnValue({ data: [] })
     mockWebexAttentionFiltered.mockResolvedValue([])
     mockUseWebexStatus.mockReturnValue({ data: { authenticated: false } })
@@ -55,18 +56,20 @@ describe('landing page', () => {
     )
 
     expect(html).toContain('Your day at a glance')
-    expect(html).toContain('priorities</h2>')
+    expect(html).toContain('Health strip')
+    expect(html).toContain('priorities today')
     expect(html).toContain('Upcoming meetings')
-    expect(html).toContain('Plan your day')
+    expect(html).toContain('New todo')
+    expect(html).toContain('Overdue')
     expect(html).toContain('Get started')
     expect(html).toContain('View today&#x27;s brief →')
+    expect(html).toContain('Status analytics')
     expect(html).not.toContain('AI usage')
     expect(html).not.toContain('Usage metrics')
-    expect(html).not.toContain('Status analytics')
-    expect(html).not.toContain('Ledger deltas overnight')
+    expect(html).not.toContain('Attention is stacking up')
   })
 
-  it('promotes attention to the top when inbox items exist', async () => {
+  it('no longer shows the attention banner on the landing page even when inbox items exist', async () => {
     mockUseJiraTickets.mockReturnValue({ data: [{ key: 'CXP-30112', title: 'Blocked epic', status: 'Blocked' }] })
     mockWebexAttentionFiltered.mockResolvedValue([
       {
@@ -100,14 +103,12 @@ describe('landing page', () => {
       </QueryClientProvider>,
     )
 
-    expect(html).toContain('Attention is stacking up')
-    expect(html).toContain('Open inbox')
-    expect(html).toContain('Ada')
-    expect(html).toContain('Mention')
-    expect(html).toContain('Bo')
-    expect(html).toContain('DM')
-    expect(html).toContain('+1 more waiting')
-    expect(html).not.toContain('Your day at a glance')
-    expect(html).not.toContain('Get started')
+    // Attention banner is removed from the landing page entirely.
+    expect(html).not.toContain('Attention is stacking up')
+    expect(html).not.toContain('Open inbox')
+    expect(html).not.toContain('more waiting')
+    // The day-at-a-glance hero always shows instead.
+    expect(html).toContain('Your day at a glance')
+    expect(html).toContain('need attention')
   })
 })

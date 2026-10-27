@@ -1,4 +1,4 @@
-const MCP_ENDPOINT = '/proxy/mcp'
+const MCP_ENDPOINT = import.meta.env.PROD ? '/mcp' : '/proxy/mcp'
 const PROTOCOL_VERSION = '2025-06-18'
 
 type JsonRpcError = {

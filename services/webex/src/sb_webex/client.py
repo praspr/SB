@@ -257,14 +257,31 @@ def _fetch_message_uncached(token: str, message_id: str, *, timeout: float = 15.
 
 
 @functools.lru_cache(maxsize=_PARENT_LOOKUP_CACHE_SIZE)
+def _fetch_message_by_hash(token_hash: str, message_id: str, token: str) -> dict | None:
+    """LRU cache keyed on a token *hash* (not the raw token) + message id.
+
+    The raw ``token`` is still passed through for the actual fetch, but it is
+    excluded from the cache key by hashing it into ``token_hash`` upstream, so
+    the secret is never retained as an ``lru_cache`` key. A token rotation
+    changes the hash and therefore never serves a stale cross-account entry.
+    """
+    return _fetch_message_uncached(token, message_id)
+
+
 def _fetch_message_cached(token: str, message_id: str) -> dict | None:
     """Bounded in-process cache (LRU, 500 entries) over ``_fetch_message_uncached``.
 
-    Keyed on (token, message_id) so a token rotation never serves a stale
-    cross-account cache entry. Not persisted between processes -- the
-    decorator's cache lives only as long as this module stays imported.
+    The cache key is ``(sha256(token), message_id)`` so the bearer token is not
+    held as a cache key. Not persisted between processes.
     """
-    return _fetch_message_uncached(token, message_id)
+    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    return _fetch_message_by_hash(token_hash, message_id, token)
+
+
+# Expose the underlying LRU controls on the public wrapper so callers (and
+# tests) can clear or inspect the cache without reaching the hashed inner fn.
+_fetch_message_cached.cache_clear = _fetch_message_by_hash.cache_clear  # type: ignore[attr-defined]
+_fetch_message_cached.cache_info = _fetch_message_by_hash.cache_info  # type: ignore[attr-defined]
 
 
 class McpClient:

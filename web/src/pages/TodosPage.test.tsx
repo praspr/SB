@@ -47,7 +47,7 @@ describe('todos ui', () => {
     )
     expect(html).toContain('Portal launch')
     expect(html).toContain('CXP-42')
-    expect(html).toContain('weekly')
+    expect(html).toContain('FREQ=WEEKLY')
   })
 
   it('shows productivity summaries, search, sorting, and the jira action', () => {

@@ -8,6 +8,12 @@ export type CoreStatus = {
     schema_version: number | null
     path?: string
   }
+  disk?: {
+    total: number
+    used: number
+    free: number
+    percent: number
+  } | null
   counts: {
     tools: number
     prompts: number

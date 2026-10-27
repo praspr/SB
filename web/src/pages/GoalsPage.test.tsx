@@ -37,6 +37,6 @@ describe('goals page', () => {
     )
     expect(html).toContain('Ship automation')
     expect(html).toContain('Drift alert')
-    expect(html).toContain('Heatmap · last 7 days')
+    expect(html).toContain('Weekly activity')
   })
 })

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, CalendarClock, CheckCircle2, Circle, Search } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -9,6 +9,7 @@ import { fetchRichTasks } from '@/lib/todos-rich'
 import { listGoalsV2 } from '@/lib/goals'
 import { listJiraTickets } from '@/lib/queries'
 import { TaskList } from '@/components/tasks/TaskList'
+import { TodoStats } from '@/components/tasks/TodoStats'
 import { QuickAddInput, type QuickAddInputHandle } from '@/components/tasks/QuickAddInput'
 import type { Priority } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
@@ -16,7 +17,6 @@ import { useUiStore } from '@/lib/store'
 import { useToast } from '@/lib/useToast'
 import {
   organizeTodos,
-  summarizeTodos,
   type TodoSort,
   type TodoStatusFilter,
 } from '@/lib/todo-groups'
@@ -90,7 +90,6 @@ export function TodosPage() {
     })
   }, [activeFilters, goalFilter, tasks, today])
 
-  const summary = useMemo(() => summarizeTodos(filteredTasks, today), [filteredTasks, today])
   const groups = useMemo(
     () => organizeTodos(filteredTasks, { status, priority, query, sort, today }),
     [filteredTasks, priority, query, sort, status, today],
@@ -138,22 +137,7 @@ export function TodosPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-border-subtle bg-bg-panel/60 sm:grid-cols-4">
-        {[
-          { label: 'Overdue', value: summary.overdue, icon: AlertTriangle, tone: 'text-danger' },
-          { label: 'Due today', value: summary.today, icon: CalendarClock, tone: 'text-warning' },
-          { label: 'Open', value: summary.open, icon: Circle, tone: 'text-accent-300' },
-          { label: 'Completed', value: summary.completed, icon: CheckCircle2, tone: 'text-success' },
-        ].map((item) => (
-          <div key={item.label} className="flex items-center gap-3 border-b border-border-subtle px-4 py-3 last:border-0 sm:border-b-0 sm:border-r">
-            <item.icon size={15} className={item.tone} />
-            <div>
-              <div className="text-16 font-semibold tabular text-text-primary">{item.value}</div>
-              <div className="text-11 uppercase tracking-[0.12em] text-text-muted">{item.label}</div>
-            </div>
-          </div>
-        ))}
-      </div>
+      <TodoStats tasks={filteredTasks} today={today} />
 
       <div className="space-y-3 border-b border-border-subtle pb-4">
         <div className="flex flex-wrap items-center gap-2">

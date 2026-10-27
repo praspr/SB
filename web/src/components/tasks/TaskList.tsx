@@ -23,12 +23,21 @@ export function TaskList({
   }
 
   return (
-    <div className="space-y-2">
+    <motion.div
+      className="space-y-2"
+      initial="hidden"
+      animate="show"
+      variants={{ show: { transition: { staggerChildren: 0.03 } } }}
+    >
       {tasks.map((task) => (
-        <motion.div key={task.id} layout>
+        <motion.div
+          key={task.id}
+          layout
+          variants={{ hidden: { opacity: 0, y: 6 }, show: { opacity: 1, y: 0 } }}
+        >
           <TaskRow task={task} goalTitle={task.goal_id ? goalTitles[task.goal_id] : undefined} />
         </motion.div>
       ))}
-    </div>
+    </motion.div>
   )
 }

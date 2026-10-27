@@ -60,7 +60,7 @@ def test_append_ledger_redacts_secrets_and_stamps_flag(tmp_path: Path) -> None:
         assert row is not None
         assert "AKIA" not in row["summary"]
         assert "[REDACTED:AWS_KEY]" in row["summary"]
-        assert row["redaction_rules_version"] == 1
+        assert row["redaction_rules_version"] == 2
     finally:
         conn.close()
 

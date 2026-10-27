@@ -1,8 +1,6 @@
 import { NavLink } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
 import { ListTodo, Calendar, MessageSquare, Ticket, Library, ChevronLeft, ChevronRight, Settings, FileText, BookOpen, Inbox, Target, Plus, Command } from 'lucide-react'
 import { SettingsPopover } from '@/components/layout/SettingsPopover'
-import { webexAttentionRanked } from '@/lib/triage'
 import { useUiStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
@@ -10,7 +8,6 @@ const navGroups = [
   {
     label: 'DO NOW',
     items: [
-      { to: '/attention', label: 'Attention', icon: Inbox, end: false },
       { to: '/todos', label: 'Todos', icon: ListTodo, end: false },
       { to: '/meetings', label: 'Meetings', icon: Calendar, end: false },
       { to: '/jira', label: 'JIRAs', icon: Ticket, end: false },
@@ -39,12 +36,6 @@ export function Sidebar() {
   const toggleSidebar = useUiStore((s) => s.toggleSidebar)
   const openAddTodo = useUiStore((s) => s.openAddTodo)
   const setCommandPaletteOpen = useUiStore((s) => s.setCommandPaletteOpen)
-  const attention = useQuery({
-    queryKey: ['triage', 'attention', 'sidebar'],
-    queryFn: () => webexAttentionRanked(30),
-    staleTime: 60_000,
-  })
-  const unreadCount = attention.data?.length ?? 0
 
   return (
     <aside
@@ -97,24 +88,15 @@ export function Sidebar() {
                   end={item.end}
                   className={({ isActive }) =>
                     cn(
-                      'flex items-center gap-3 rounded-lg px-2.5 py-2 text-13 font-medium text-text-secondary transition-colors duration-fast ease-out hover:bg-bg-elevated hover:text-text-primary',
-                      isActive && 'border border-border-strong bg-accent-500/15 text-text-primary',
+                      'focus-ring relative flex items-center gap-3 rounded-lg px-2.5 py-2 text-13 font-medium text-text-secondary transition-colors duration-fast ease-out hover:bg-surface-2 hover:text-text-primary',
+                      isActive && 'bg-surface-2 text-text-primary shadow-rail',
                       collapsed && 'justify-center px-0'
                     )
                   }
                   title={collapsed ? item.label : undefined}
                 >
                   <item.icon size={18} className="shrink-0" />
-                  {!collapsed && (
-                    <>
-                      <span>{item.label}</span>
-                      {item.to === '/attention' && unreadCount > 0 ? (
-                        <span className="ml-auto rounded-full border border-border-subtle bg-black/20 px-2 py-0.5 text-12 tabular text-text-secondary">
-                          {unreadCount}
-                        </span>
-                      ) : null}
-                    </>
-                  )}
+                  {!collapsed && <span>{item.label}</span>}
                 </NavLink>
               ))}
             </div>

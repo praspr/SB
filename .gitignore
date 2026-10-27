@@ -64,3 +64,6 @@ services/core/salvage/
 # ─── Ledger runtime lockfile (created by ledger_sync flock) ─────────
 CHANGELOG.md.lock
 
+# ─── Local session prompt transcripts (not published) ───────────────
+project_notes/
+

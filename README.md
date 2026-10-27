@@ -50,7 +50,7 @@ with common dev services.
                               │ HTTP  /mcp  or  /sse
                               ▼
 ┌─── sb-core :8787  (127.0.0.1) ────────────────────────────────────────────────┐
-│  Python · FastMCP + FastAPI · 76 tools / 20 prompts / 20 resources             │
+│  Python · FastMCP + FastAPI · ~79 tools (prompts/resources per skill index)     │
 │  core.db · todos.db · local JIRA markdown (pull-only) · Webex mirror           │
 │  skills · signals · ledger (append-only) · reports · triage · goals · scheduler│
 └────────────────────────────▲────────────────────────────────────────────────────┘
@@ -68,10 +68,11 @@ with common dev services.
 
 `services/core` is the single local MCP process. It binds to `127.0.0.1:8787`,
 serves Streamable HTTP at `/mcp` and compatibility SSE at `/sse`, and exposes
-operational readiness at `GET /health` (tool/prompt/resource counts — 76/20/20
-as of this writing). The database defaults to `~/.local/share/sb/core.db`
+operational readiness at `GET /health` (live tool/prompt/resource counts;
+~79 tools as of this writing, with prompt/resource counts depending on the
+indexed skill surface). The database defaults to `~/.local/share/sb/core.db`
 (WAL, foreign keys, a 5-second busy timeout, and a versioned migration table,
-currently at schema version 10). Todo tools are mounted in-process under
+currently at schema version 12). Todo tools are mounted in-process under
 their original names (`todo_list`, `todo_add`, `todo_complete`, and the
 rest, now including goal/JIRA/recurrence fields — see below). JIRA tools
 (`list_jira_tickets`, `get_jira_ticket`, `track_jira`, `untrack_jira`,

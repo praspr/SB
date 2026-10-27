@@ -46,8 +46,8 @@ from .models import JiraTicket, JiraTicketDetail, Person, Section
 
 logger = logging.getLogger("sb_jira.file_store")
 
-# Known name -> email mapping for people encountered in the local mirror.
-# Extend as new assignees/reporters show up.
+# Back-compat default map. The authoritative source is ``settings.known_emails``;
+# this constant is kept for importers and as a fallback.
 KNOWN_EMAILS: dict[str, str] = {
     "PRASAD P R": "praspr@cisco.com",
 }
@@ -61,13 +61,15 @@ def _guess_email(name: str) -> str:
     name = name.strip()
     if not name:
         return ""
-    if name in KNOWN_EMAILS:
-        return KNOWN_EMAILS[name]
-    # Best-effort fallback: "First Last" -> first.last@cisco.com
+    known = getattr(settings, "known_emails", None) or KNOWN_EMAILS
+    if name in known:
+        return known[name]
+    domain = getattr(settings, "email_fallback_domain", "cisco.com")
+    # Best-effort fallback: "First Last" -> first.last@<domain>
     slug = "".join(ch for ch in name.lower() if ch.isalnum() or ch == " ").split()
     if not slug:
         return ""
-    return ".".join(slug) + "@cisco.com"
+    return ".".join(slug) + f"@{domain}"
 
 
 def _parse_person(raw: str) -> Person | None:

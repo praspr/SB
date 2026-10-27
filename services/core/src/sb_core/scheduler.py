@@ -57,16 +57,31 @@ def _parse_field(field: str, low: int, high: int) -> set[int]:
         base = part
         if "/" in part:
             base, step_str = part.split("/", 1)
-            step = int(step_str)
-        if base == "*":
-            rng = range(low, high + 1)
-        elif "-" in base:
-            start_str, end_str = base.split("-", 1)
-            rng = range(int(start_str), int(end_str) + 1)
-        else:
-            rng = range(int(base), int(base) + 1)
+            try:
+                step = int(step_str)
+            except ValueError as exc:
+                raise ValueError(f"bad cron step in field {field!r}") from exc
+            if step <= 0:
+                raise ValueError(f"bad cron step in field {field!r}")
+        try:
+            if base == "*":
+                rng = range(low, high + 1)
+            elif "-" in base:
+                start_str, end_str = base.split("-", 1)
+                rng = range(int(start_str), int(end_str) + 1)
+            else:
+                rng = range(int(base), int(base) + 1)
+        except ValueError as exc:
+            raise ValueError(f"bad cron field {field!r}") from exc
+        # Fail loudly on out-of-range values instead of silently yielding an
+        # empty set (which would make a typo'd schedule a silent no-op).
+        for v in rng:
+            if not (low <= v <= high):
+                raise ValueError(
+                    f"cron value {v} out of range [{low},{high}] in field {field!r}"
+                )
         values.update(v for v in rng if (v - low) % step == 0)
-    return {v for v in values if low <= v <= high}
+    return values
 
 
 def parse_cron(cron: str) -> dict[str, set[int]]:
@@ -79,12 +94,17 @@ def parse_cron(cron: str) -> dict[str, set[int]]:
     if len(fields) != 5:
         raise ValueError(f"cron must have 5 fields, got {cron!r}")
     minute, hour, dom, month, dow = fields
+    # dow accepts 0-7 where both 0 and 7 mean Sunday (standard cron); 7 is
+    # normalized to 0 so matching stays in the 0-6 space.
+    dow_values = _parse_field(dow, 0, 7)
+    if 7 in dow_values:
+        dow_values = (dow_values - {7}) | {0}
     return {
         "minute": _parse_field(minute, 0, 59),
         "hour": _parse_field(hour, 0, 23),
         "dom": _parse_field(dom, 1, 31),
         "month": _parse_field(month, 1, 12),
-        "dow": _parse_field(dow, 0, 6),
+        "dow": dow_values,
     }
 
 
@@ -110,7 +130,15 @@ def last_scheduled_at(
 ) -> Optional[datetime]:
     """Return the most recent minute at or before *now* that matches *cron*,
     searching backward up to *lookback_minutes*. None if no match is found
-    in that window (a misconfigured or impossible cron expression)."""
+    in that window (a misconfigured or impossible cron expression).
+
+    DST note: *now* and the walked candidates are naive local time. Around a
+    DST transition the local wall-clock minute a schedule fires at is matched
+    normally, but duplicate firing is prevented by ``run_due_schedules``, which
+    compares the matched ``fire_at`` against the stored ``last_run_at`` and only
+    runs when ``fire_at > last_run_at``. So even if a local minute recurs
+    (fall-back) the ritual still runs at most once per stored run marker.
+    """
     candidate = now
     for _ in range(lookback_minutes + 1):
         if cron_matches(cron, candidate):

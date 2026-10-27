@@ -6,14 +6,12 @@ type Datum = { label: string; value: number }
 type DashboardSummary = { todos: Datum[]; jira: Datum[]; signals: Datum[] }
 
 const tones = [
-  'bg-accent-500',
-  'bg-info',
-  'bg-warning',
-  'bg-success',
-  'bg-danger',
-  'bg-purple-400',
-  'bg-cyan-400',
-  'bg-orange-400',
+  'bg-chart-1',
+  'bg-chart-2',
+  'bg-chart-3',
+  'bg-chart-4',
+  'bg-chart-5',
+  'bg-chart-6',
 ]
 
 function countBy(values: string[]): Datum[] {
@@ -51,15 +49,15 @@ function MiniChart({
   const total = data.reduce((sum, item) => sum + item.value, 0)
   const max = Math.max(1, ...data.map((item) => item.value))
   return (
-    <section className="rounded-xl border border-border-subtle bg-bg-panel/92 p-4">
+    <section className="rounded-lg border border-border-subtle bg-surface-1 shadow-card p-4">
       <div className="flex items-start justify-between">
         <div>
           <h3 className="text-14 font-semibold text-text-primary">{title}</h3>
           <p className="mt-0.5 text-11 text-text-muted">{subtitle}</p>
         </div>
-        <span className="text-20 font-semibold tabular-nums text-text-primary">{total}</span>
+        <span className="font-mono text-24 tabular text-text-primary">{total}</span>
       </div>
-      <div className="mt-4 flex h-2 overflow-hidden rounded-full bg-neutral-800">
+      <div className="mt-4 flex h-2 overflow-hidden rounded-full bg-surface-sunken">
         {data.map((item, index) =>
           item.value > 0 ? (
             <Link
@@ -78,7 +76,7 @@ function MiniChart({
           <Link key={item.label} to={href(item.label)} className="group flex items-center gap-2 text-12">
             <span className={`h-2 w-2 rounded-full ${tones[index % tones.length]}`} />
             <span className="w-24 truncate text-text-secondary group-hover:text-text-primary">{item.label}</span>
-            <span className="h-1 flex-1 overflow-hidden rounded bg-neutral-800">
+            <span className="h-1 flex-1 overflow-hidden rounded bg-surface-sunken">
               <span
                 className={`block h-full rounded ${tones[index % tones.length]}`}
                 style={{ width: `${(item.value / max) * 100}%` }}
@@ -105,7 +103,7 @@ export function DashboardInsights({
   return (
     <section>
       <div className="mb-3">
-        <h2 className="text-xs uppercase tracking-wide text-neutral-500">Work pulse</h2>
+        <h2 className="text-11 uppercase tracking-[0.14em] text-text-muted">Work pulse</h2>
         <p className="mt-1 text-12 text-text-muted">Click a segment to inspect the underlying records.</p>
       </div>
       <div className="grid gap-3 md:grid-cols-3">

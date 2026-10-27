@@ -118,7 +118,28 @@ npm run dev     # → http://localhost:5173
 ```
 
 The dashboard talks to sb-core through the Vite dev proxy at `/proxy/mcp`
-(see `docs/WEB_DASHBOARD.md`).
+(see `docs/WEB_DASHBOARD.md`). The dev server runs at
+`http://localhost:5173/_ui/`.
+
+## Optional: serve the dashboard from sb-core (no dev server)
+
+sb-core can host the built dashboard same-origin, so the single launchd job
+serves both the MCP transports and the UI in parallel — no `npm run dev`
+needed:
+
+```bash
+cd sb/web
+npm install     # first time only
+npm run build   # emits web/dist/
+```
+
+Then open `http://127.0.0.1:8787/_ui/` (sb-core serves `web/dist/` under the
+`/_ui` prefix). In this mode the UI calls the MCP at `/mcp` directly and the
+Copilot/Cursor usage tiles go through sb-core's own `/proxy/claudegate/*` and
+`/proxy/cursor/*` routes (the Cursor cookie is built server-side by
+`sb_core/cursor_auth.py`). Override the served directory with
+`SB_WEB_DIST_PATH` if `web/dist` lives elsewhere. If the build is missing,
+`/_ui` returns a 503 placeholder and the MCP endpoints are unaffected.
 
 ## Optional: Webex sign-in
 

@@ -1,7 +1,24 @@
 # Web Dashboard
 
 `sb/web` is the local dashboard: Vite + React + TypeScript + Tailwind, dark-first
-Linear-inspired UI. Dev server runs at `http://localhost:5173`.
+Linear-inspired UI. Dev server runs at `http://localhost:5173/_ui/`.
+
+## Hosting
+
+- **Dev**: `npm run dev` → Vite at `http://localhost:5173/_ui/`, reaching
+  sb-core through the Vite proxies below.
+- **Production (same-origin)**: `npm run build` emits `web/dist/`, which the
+  sb-core FastAPI process serves at `http://127.0.0.1:8787/_ui/`. No separate
+  server or port — the existing `com.praspr.sb` launchd job hosts the UI and
+  the MCP transports in the same process. The SPA is reached under the
+  uncommon `/_ui` prefix (deep client routes fall back to `index.html`).
+
+In production the browser is same-origin with sb-core, so the app calls the
+MCP at `/mcp` directly and reaches the usage proxies via same-origin FastAPI
+routes (`/proxy/claudegate/*`, `/proxy/cursor/*`) instead of the Vite dev
+proxies. The MCP endpoint is environment-aware in `web/src/lib/mcp.ts`
+(`/proxy/mcp` in dev, `/mcp` in prod); Vite `base` and the React Router
+`basename` are both `/_ui`.
 
 ## Stack
 
@@ -126,6 +143,17 @@ Defined in `web/vite.config.ts`:
 | `/proxy/mcp` | `http://127.0.0.1:8787` (rewritten, strips prefix, `/mcp` appended) | sb-core MCP endpoint |
 | `/proxy/claudegate` | `http://localhost:9999` | GitHub Copilot usage proxy (Anthropic-compatible) |
 | `/proxy/cursor` | `https://cursor.com` | Cursor usage proxy; dev server injects the `WorkosCursorSessionToken` cookie read from Cursor.app's local `state.vscdb` (`web/vite/cursor-auth.ts`) — the browser never sees the token |
+
+These proxies only exist in the Vite dev server. In **production** the UI is
+served same-origin by sb-core, which provides the equivalent FastAPI routes
+(`services/core/src/sb_core/main.py`):
+
+| Route | Target | Purpose |
+|---|---|---|
+| `/_ui`, `/_ui/`, `/_ui/{path}` | `web/dist/` (`settings.web_dist_path`, env `SB_WEB_DIST_PATH`) | Serves the built SPA; unknown subpaths fall back to `index.html`, missing build returns a 503 placeholder |
+| `/mcp` | in-process FastMCP | MCP endpoint, called directly (no `/proxy/mcp` in prod) |
+| `/proxy/claudegate/{path}` | `http://localhost:9999` | GitHub Copilot usage passthrough (httpx) |
+| `/proxy/cursor/{path}` | `https://cursor.com` | Cursor usage passthrough; the `WorkosCursorSessionToken` cookie is built server-side by `sb_core/cursor_auth.py` (stdlib port of `cursor-auth.ts`), reading `state.vscdb` read-only, caching 5 min, failing soft — the browser never sees the token |
 
 ## Keyboard shortcuts
 

@@ -23,6 +23,18 @@ _BUSY_TIMEOUT_MS = 5000
 _MIGRATION_RETRIES = 10
 _MIGRATION_BACKOFF_S = 0.05
 
+# Per-process guard: DB paths whose migrations have already been applied in this
+# process. Migrations are idempotent, so re-running them on every fresh
+# connection is correct but wasteful (bootstrap txn + version scan + column
+# scan per call). We run them once per process per path; ``connect(force=True)``
+# bypasses the guard (used by tests and after a known schema change).
+_migrated_paths: set[str] = set()
+
+
+def reset_migration_guard() -> None:
+    """Testing hook: forget which paths have been migrated this process."""
+    _migrated_paths.clear()
+
 
 def _columns(conn: sqlite3.Connection, table: str) -> set[str]:
     return {row[1] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
@@ -320,6 +332,50 @@ def _m11_webex_handled(conn: sqlite3.Connection) -> None:
     _add_column(conn, "sb_webex_messages", "handled_action", "TEXT")
 
 
+def _m12_ledger_refs(conn: sqlite3.Connection) -> None:
+    """Normalized ``{ledger_id, kind, value}`` rows for indexed ref lookups
+    (M2). Replaces the previous full-table scan + Python JSON filter used by
+    ``by_ref``/``open_threads``. The ledger itself stays append-only; these are
+    derived child rows. Existing rows are backfilled here (one-time parse)."""
+    import json
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS sb_ledger_refs (
+          ledger_id INTEGER NOT NULL,
+          kind      TEXT    NOT NULL,
+          value     TEXT    NOT NULL
+        )
+        """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_ledger_refs_kv ON sb_ledger_refs(kind, value)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_ledger_refs_lid ON sb_ledger_refs(ledger_id)"
+    )
+
+    # Backfill: only if the table is empty (idempotent across partial runs).
+    already = conn.execute("SELECT COUNT(*) FROM sb_ledger_refs").fetchone()[0]
+    if already:
+        return
+    rows = conn.execute("SELECT id, refs FROM sb_ledger").fetchall()
+    for row in rows:
+        ledger_id = row[0]
+        try:
+            refs = json.loads(row[1] or "[]")
+        except (TypeError, ValueError):
+            continue
+        for ref in refs if isinstance(refs, list) else []:
+            if not isinstance(ref, dict):
+                continue
+            kind = ref.get("kind")
+            value = ref.get("value")
+            if isinstance(kind, str) and value is not None:
+                conn.execute(
+                    "INSERT INTO sb_ledger_refs (ledger_id, kind, value) VALUES (?, ?, ?)",
+                    (ledger_id, kind, str(value)),
+                )
+
+
 _MIGRATIONS: list[tuple[int, Callable[[sqlite3.Connection], None]]] = [
     (1, _m1_metadata),
     (2, _m2_skills),
@@ -332,6 +388,7 @@ _MIGRATIONS: list[tuple[int, Callable[[sqlite3.Connection], None]]] = [
     (9, _m9_batch),
     (10, _m10_webex_threads),
     (11, _m11_webex_handled),
+    (12, _m12_ledger_refs),
 ]
 
 _REQUIRED_COLUMNS: dict[str, dict[str, str]] = {
@@ -473,16 +530,23 @@ def _ensure_required_columns(conn: sqlite3.Connection) -> None:
         _in_immediate_txn(conn, _add_missing)
 
 
-def connect(db_path: Path | str) -> sqlite3.Connection:
+def connect(db_path: Path | str, *, force_migrations: bool = False) -> sqlite3.Connection:
     """Open (or create) a WAL SQLite DB at *db_path*, run migrations, and return
     a fresh connection.
 
     Each caller should open its own connection and close it when done.
     Do not share connections across threads or processes.
+
+    Migrations run once per process per resolved path (idempotent, so this is
+    safe); pass ``force_migrations=True`` to re-run them regardless (tests, or
+    after a known schema change in a long-lived process).
     """
     path = Path(db_path).expanduser()
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(path), timeout=_BUSY_TIMEOUT_MS / 1000)
     _configure(conn)
-    run_migrations(conn)
+    resolved = str(path.resolve())
+    if force_migrations or resolved not in _migrated_paths:
+        run_migrations(conn)
+        _migrated_paths.add(resolved)
     return conn
